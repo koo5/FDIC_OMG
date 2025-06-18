@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fdic-omg"
+version = "1.0.0"
+description = "FDIC OMG Semantic Augmentation Challenge processor"
+authors = [
+    {name = "Lodgeit Labs", email = "dev@lodgeit.net.au"}
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "rdflib>=7.0.0",
+    "click>=8.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=22.0.0",
+    "isort>=5.10.0",
+]
+
+[project.scripts]
+fdic-omg = "fdic_omg.cli:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["fdic_omg*"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.isort]
+profile = "black"
