@@ -7,6 +7,9 @@ to RDF with ontology mappings, without any CLI or framework dependencies.
 """
 
 import csv
+import json
+import math
+import shutil
 import logging
 from pathlib import Path
 from typing import Dict, List, Any, Optional
@@ -255,3 +258,238 @@ class FDICRDFGenerator:
         except ValueError:
             log.warning(f"Could not convert '{value}' to {data_type}")
             return None
+    
+    def generate_viewer_output(self, csv_path: Path, output_dir: Path, rows_per_page: int = 1000) -> Dict[str, Any]:
+        """Generate standalone tabular data viewer with pagination"""
+        log.info(f"Generating viewer output for {csv_path} in {output_dir}")
+        
+        # Create output directory
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Copy pre-built Vue app files
+        rdftab_build_dir = Path(__file__).parent.parent.parent.parent.parent / "static" / "rdftab"
+        if rdftab_build_dir.exists():
+            # Copy all built files
+            for item in rdftab_build_dir.rglob("*"):
+                if item.is_file():
+                    rel_path = item.relative_to(rdftab_build_dir)
+                    dest_path = output_dir / rel_path
+                    dest_path.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(item, dest_path)
+        else:
+            log.warning(f"RDFtab build directory not found: {rdftab_build_dir}")
+        
+        # Process CSV and generate data files
+        with open(csv_path, 'r', encoding='utf-8-sig') as csvfile:
+            reader = csv.DictReader(csvfile)
+            headers = list(reader.fieldnames)
+            rows = list(reader)
+        
+        total_rows = len(rows)
+        total_pages = math.ceil(total_rows / rows_per_page)
+        
+        # Generate manifest
+        manifest = {
+            "dataset_uri": self.result_uri + "dataset",
+            "title": f"FDIC Dataset: {csv_path.name}",
+            "description": "FDIC-Insured Institutions Dataset with semantic annotations",
+            "total_rows": total_rows,
+            "rows_per_page": rows_per_page,
+            "total_pages": total_pages,
+            "headers": headers,
+            "column_mappings": self._get_column_mappings_for_viewer()
+        }
+        
+        # Write manifest
+        with open(output_dir / "manifest.json", 'w') as f:
+            json.dump(manifest, f, indent=2)
+        
+        # Generate paginated data and cell metadata
+        for page_num in range(total_pages):
+            start_idx = page_num * rows_per_page
+            end_idx = min(start_idx + rows_per_page, total_rows)
+            
+            # Generate page data (simplified array format for efficiency)
+            page_data = {
+                "page": page_num,
+                "start_row": start_idx,
+                "end_row": end_idx - 1,
+                "rows": []
+            }
+            
+            # Generate cell metadata
+            cells_data = {}
+            
+            for i in range(start_idx, end_idx):
+                row = rows[i]
+                row_index = i
+                
+                # Add row data as array (more compact)
+                page_data["rows"].append([row.get(col, "") for col in headers])
+                
+                # Generate cell metadata for non-empty cells
+                for col_idx, col in enumerate(headers):
+                    value = row.get(col, "")
+                    if value and value.strip():
+                        cell_key = f"row_{row_index}/col_{col}"
+                        cells_data[cell_key] = self._generate_cell_metadata(row_index, col, value, col_idx)
+            
+            # Write page data
+            with open(output_dir / f"page_{page_num}.json", 'w') as f:
+                json.dump(page_data, f, indent=2)
+            
+            # Write cell metadata
+            with open(output_dir / f"cells_{page_num}.json", 'w') as f:
+                json.dump(cells_data, f, indent=2)
+        
+        log.info(f"Generated viewer with {total_pages} pages in {output_dir}")
+        return {
+            "output_dir": str(output_dir),
+            "total_rows": total_rows,
+            "total_pages": total_pages,
+            "manifest_file": str(output_dir / "manifest.json")
+        }
+    
+    def _get_column_mappings_for_viewer(self) -> Dict[str, Dict]:
+        """Get simplified column mappings for the viewer"""
+        viewer_mappings = {}
+        for col, mapping in self.column_mappings.items():
+            viewer_mappings[col] = {
+                "label": col.replace("_", " ").title(),
+                "description": mapping.get("description", ""),
+                "dataType": mapping.get("data_type", "string"),
+                "semanticType": mapping.get("type", ""),
+                "ontologyRef": mapping.get("ontology_ref", ""),
+                "seeAlso": [mapping.get("ontology_ref")] if mapping.get("ontology_ref") else []
+            }
+        return viewer_mappings
+    
+    def _generate_cell_metadata(self, row_index: int, column: str, value: str, col_index: int) -> Dict[str, Any]:
+        """Generate metadata for a specific cell"""
+        cell_uri = f"{self.result_uri}#row_{row_index}/col_{column}"
+        
+        # Get column mapping if available
+        mapping = self.column_mappings.get(column, {})
+        
+        # Generate basic cell metadata
+        metadata = {
+            "uri": cell_uri,
+            "value": value,
+            "row_index": row_index,
+            "column_name": column,
+            "column_index": col_index,
+            "data_type": mapping.get("data_type", "string")
+        }
+        
+        # Add typed value if possible
+        typed_value = self._convert_value_type(value, mapping.get("data_type", "string"))
+        if typed_value is not None:
+            if mapping.get("data_type") == "decimal":
+                metadata["typed_value"] = float(value)
+            elif mapping.get("data_type") == "integer":
+                metadata["typed_value"] = int(value)
+            else:
+                metadata["typed_value"] = value
+        
+        # Add semantic information
+        if mapping:
+            metadata["semantic_type"] = mapping.get("type", "")
+            metadata["description"] = mapping.get("description", "")
+            metadata["ontology_ref"] = mapping.get("ontology_ref", "")
+        
+        # Add external links based on column type and value
+        metadata["links"] = self._generate_external_links(column, value, mapping)
+        
+        # Add properties specific to the column type
+        metadata["properties"] = self._generate_cell_properties(column, value, mapping)
+        
+        return metadata
+    
+    def _generate_external_links(self, column: str, value: str, mapping: Dict) -> List[Dict[str, str]]:
+        """Generate external links for a cell based on its type and value"""
+        links = []
+        
+        # Add ontology reference link
+        if mapping.get("ontology_ref"):
+            links.append({
+                "url": mapping["ontology_ref"],
+                "label": "Ontology Reference",
+                "type": "ontology"
+            })
+        
+        # Add specific links based on column type
+        if column == "CERT" and value.isdigit():
+            links.append({
+                "url": f"https://www.fdic.gov/bank/individual/failed/cert/{value}.html",
+                "label": "FDIC Bank Profile",
+                "type": "external_data"
+            })
+        
+        elif column in ["NAME"]:
+            links.append({
+                "url": f"https://en.wikipedia.org/wiki/{value.replace(' ', '_')}",
+                "label": "Wikipedia",
+                "type": "reference"
+            })
+        
+        elif column in ["CITY", "STNAME"]:
+            links.append({
+                "url": f"https://www.geonames.org/search.html?q={value.replace(' ', '+')}",
+                "label": "GeoNames",
+                "type": "geographic"
+            })
+        
+        return links
+    
+    def _generate_cell_properties(self, column: str, value: str, mapping: Dict) -> Dict[str, Any]:
+        """Generate additional properties for a cell"""
+        properties = {}
+        
+        # Add validation status
+        properties["is_valid"] = self._validate_cell_value(column, value, mapping)
+        
+        # Add column-specific properties
+        if column == "CERT":
+            properties["issuer"] = "Federal Deposit Insurance Corporation"
+            properties["identifier_type"] = "FDIC Certificate Number"
+        
+        elif column in ["LONGITUDE", "X"]:
+            try:
+                lon = float(value)
+                properties["coordinate_type"] = "longitude"
+                properties["hemisphere"] = "East" if lon >= 0 else "West"
+                properties["decimal_degrees"] = lon
+            except ValueError:
+                pass
+        
+        elif column in ["LATITUDE", "Y"]:
+            try:
+                lat = float(value)
+                properties["coordinate_type"] = "latitude"
+                properties["hemisphere"] = "North" if lat >= 0 else "South"
+                properties["decimal_degrees"] = lat
+            except ValueError:
+                pass
+        
+        elif column == "ZIP":
+            properties["postal_system"] = "United States Postal Service"
+            properties["format"] = "5-digit ZIP code"
+        
+        return properties
+    
+    def _validate_cell_value(self, column: str, value: str, mapping: Dict) -> bool:
+        """Validate a cell value against its expected type and constraints"""
+        if not value or not value.strip():
+            return False
+        
+        data_type = mapping.get("data_type", "string")
+        
+        try:
+            if data_type == "integer":
+                int(value)
+            elif data_type == "decimal":
+                float(value)
+            # String values are always valid if not empty
+            return True
+        except ValueError:
+            return False
