@@ -13,8 +13,9 @@ from typing import Dict, List, Any, Optional
 from datetime import datetime
 
 import rdflib
-from rdflib import Graph, URIRef, Literal, Namespace
+from rdflib import Graph, URIRef, Literal, Namespace, BNode
 from rdflib.namespace import RDF, RDFS, XSD, FOAF, DCTERMS
+from rdflib.collection import Collection
 
 # Setup logging
 log = logging.getLogger(__name__)
@@ -47,87 +48,50 @@ class FDICRDFGenerator:
         self.graph.bind("dcterms", DCTERMS)
         
     def _load_column_mappings(self) -> Dict[str, Dict]:
-        """Load semantic mappings for FDIC CSV columns"""
-        return {
-            "X": {
-                "type": "coordinate", 
-                "ontology_ref": str(GEO.hasGeometry),
-                "description": "Longitude coordinate",
-                "data_type": "decimal"
-            },
-            "Y": {
-                "type": "coordinate",
-                "ontology_ref": str(GEO.hasGeometry), 
-                "description": "Latitude coordinate",
-                "data_type": "decimal"
-            },
-            "LONGITUDE": {
-                "type": "coordinate",
-                "ontology_ref": str(GEO.longitude),
-                "description": "Geographic longitude",
-                "data_type": "decimal"
-            },
-            "LATITUDE": {
-                "type": "coordinate", 
-                "ontology_ref": str(GEO.latitude),
-                "description": "Geographic latitude",
-                "data_type": "decimal"
-            },
-            "NAME": {
-                "type": "bank_name",
-                "ontology_ref": str(FIBO + "FormalOrganization/hasLegalName"),
-                "description": "Legal name of financial institution",
-                "data_type": "string"
-            },
-            "ADDRESS": {
-                "type": "address",
-                "ontology_ref": str(FIBO + "Places/Address"),
-                "description": "Physical address",
-                "data_type": "string"
-            },
-            "CITY": {
-                "type": "location",
-                "ontology_ref": str(GEONAMES.name),
-                "description": "City name",
-                "data_type": "string"
-            },
-            "STALP": {
-                "type": "state_code",
-                "ontology_ref": str(GEONAMES.stateCode),
-                "description": "State abbreviation",
-                "data_type": "string"
-            },
-            "STNAME": {
-                "type": "state_name", 
-                "ontology_ref": str(GEONAMES.name),
-                "description": "State name",
-                "data_type": "string"
-            },
-            "ZIP": {
-                "type": "postal_code",
-                "ontology_ref": str(FIBO + "Places/PostalCode"),
-                "description": "ZIP postal code",
-                "data_type": "string"
-            },
-            "CERT": {
-                "type": "fdic_certificate",
-                "ontology_ref": str(FIBO + "BusinessEntities/CorporateIdentifier"),
-                "description": "FDIC Certificate Number",
-                "data_type": "integer"
-            },
-            "BKCLASS": {
-                "type": "bank_class",
-                "ontology_ref": str(FIBO + "BusinessEntities/OrganizationClassification"),
-                "description": "Bank classification code",
-                "data_type": "string"
-            },
-            "SERVTYPE_DESC": {
-                "type": "service_description",
-                "ontology_ref": str(FIBO + "ProductsAndServices/Service"),
-                "description": "Type of banking service provided",
-                "data_type": "string"
-            }
+        """Load semantic mappings for FDIC CSV columns from TTL file"""
+        mappings = {}
+        
+        # Load the TTL file
+        mappings_file = Path(__file__).parent / "column_mappings.ttl"
+        if not mappings_file.exists():
+            log.error(f"Column mappings file not found: {mappings_file}")
+            return {}
+            
+        mapping_graph = Graph()
+        mapping_graph.parse(mappings_file, format="turtle")
+        
+        # Define namespace for FDIC mappings
+        FDIC_NS = Namespace("http://example.org/fdic/ontology#")
+        
+        # Query for all column mappings
+        query = """
+        PREFIX fdic: <http://example.org/fdic/ontology#>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX dcterms: <http://purl.org/dc/terms/>
+        
+        SELECT ?column ?columnName ?semanticType ?dataType ?description ?seeAlso
+        WHERE {
+            ?column a fdic:ColumnMapping ;
+                    fdic:columnName ?columnName ;
+                    fdic:semanticType ?semanticType ;
+                    fdic:dataType ?dataType .
+            OPTIONAL { ?column dcterms:description ?description }
+            OPTIONAL { ?column rdfs:seeAlso ?seeAlso }
         }
+        """
+        
+        results = mapping_graph.query(query)
+        for row in results:
+            column_name = str(row.columnName)
+            mappings[column_name] = {
+                "type": str(row.semanticType),
+                "data_type": str(row.dataType),
+                "description": str(row.description) if row.description else "",
+                "ontology_ref": str(row.seeAlso) if row.seeAlso else ""
+            }
+        
+        log.info(f"Loaded {len(mappings)} column mappings from {mappings_file}")
+        return mappings
     
     def process_csv(self, csv_path: Path, max_rows: Optional[int] = None) -> Dict[str, Any]:
         """Process FDIC CSV file and generate RDF"""
@@ -180,21 +144,39 @@ class FDICRDFGenerator:
             reader = csv.DictReader(csvfile)
             headers = reader.fieldnames
             
-            # Add column metadata
+            # Create ordered list of columns
+            column_list = []
+            column_uris = {}
             for i, header in enumerate(headers):
                 column_uri = URIRef(self.result_uri + f"column_{i}_{header}")
                 self._add_column_metadata(column_uri, csv_uri, header, i)
                 columns_found.add(header)
+                column_list.append(column_uri)
+                column_uris[header] = column_uri
             
-            # Process data rows
+            # Create RDF list for columns
+            columns_collection = Collection(self.graph, BNode())
+            for col_uri in column_list:
+                columns_collection.append(col_uri)
+            self.graph.add((csv_uri, URIRef(self.result_uri + "hasColumnList"), columns_collection.uri))
+            
+            # Create ordered list of rows
+            row_list = []
             for row_idx, row in enumerate(reader):
                 row_uri = URIRef(self.result_uri + f"row_{row_idx}")
-                self._add_row_metadata(row_uri, csv_uri, row, row_idx)
+                self._add_row_metadata(row_uri, csv_uri, row, row_idx, column_uris)
+                row_list.append(row_uri)
                 rows_processed += 1
                 
                 if max_rows and rows_processed >= max_rows:
                     log.info(f"Limiting processing to first {rows_processed} rows")
                     break
+            
+            # Create RDF list for rows
+            rows_collection = Collection(self.graph, BNode())
+            for row_uri in row_list:
+                rows_collection.append(row_uri)
+            self.graph.add((csv_uri, URIRef(self.result_uri + "hasRowList"), rows_collection.uri))
         
         mapped_columns = len([h for h in headers if h in self.column_mappings])
         return {"rows_processed": rows_processed, "columns_mapped": mapped_columns}
@@ -215,18 +197,28 @@ class FDICRDFGenerator:
             self.graph.add((column_uri, URIRef(self.result_uri + "dataType"), Literal(mapping["data_type"])))
             self.graph.add((column_uri, URIRef(self.result_uri + "semanticType"), Literal(mapping["type"])))
     
-    def _add_row_metadata(self, row_uri: URIRef, csv_uri: URIRef, row: Dict, index: int):
+    def _add_row_metadata(self, row_uri: URIRef, csv_uri: URIRef, row: Dict, index: int, column_uris: Dict[str, URIRef]):
         """Add semantic metadata for a CSV row"""
         bank_record_class = URIRef(self.result_uri + "BankRecord")
         self.graph.add((row_uri, RDF.type, bank_record_class))
         self.graph.add((row_uri, URIRef(self.result_uri + "rowIndex"), Literal(index, datatype=XSD.integer)))
         self.graph.add((csv_uri, URIRef(self.result_uri + "hasRow"), row_uri))
         
-        # Add cell values with semantic annotations
+        # Create ordered list of cells matching column order
+        cell_list = []
         for column, value in row.items():
-            if value and value.strip():
+            if column in column_uris:
                 cell_uri = URIRef(self.result_uri + f"cell_{index}_{column}")
-                self._add_cell_metadata(cell_uri, row_uri, column, value)
+                cell_list.append((column, cell_uri, value))
+                if value and value.strip():
+                    self._add_cell_metadata(cell_uri, row_uri, column, value)
+                else:
+                    # Add empty cell
+                    cell_class = URIRef(self.result_uri + "Cell")
+                    self.graph.add((cell_uri, RDF.type, cell_class))
+                    self.graph.add((cell_uri, URIRef(self.result_uri + "columnName"), Literal(column)))
+                    self.graph.add((cell_uri, URIRef(self.result_uri + "rawValue"), Literal("")))
+                    self.graph.add((row_uri, URIRef(self.result_uri + "hasCell"), cell_uri))
     
     def _add_cell_metadata(self, cell_uri: URIRef, row_uri: URIRef, column: str, value: str):
         """Add semantic metadata for individual cell values"""

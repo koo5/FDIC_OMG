@@ -1,0 +1,291 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix fibo: <https://spec.edmcouncil.org/fibo/ontology/> .
+@prefix fibo-fbc: <https://spec.edmcouncil.org/fibo/ontology/FBC/> .
+@prefix fibo-be: <https://spec.edmcouncil.org/fibo/ontology/BE/> .
+@prefix geo: <http://www.opengis.net/ont/geosparql#> .
+@prefix geonames: <http://www.geonames.org/ontology#> .
+@prefix schema: <https://schema.org/> .
+@prefix wgs84: <http://www.w3.org/2003/01/geo/wgs84_pos#> .
+@prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix fdic: <http://example.org/fdic/ontology#> .
+@prefix wikidata: <http://www.wikidata.org/entity/> .
+@prefix dbpedia: <http://dbpedia.org/resource/> .
+
+# Ontology metadata
+<http://example.org/fdic/column-mappings> a owl:Ontology ;
+    rdfs:label "FDIC Column Mappings"@en ;
+    dcterms:title "FDIC CSV Column Semantic Mappings"@en ;
+    dcterms:description "Semantic mappings for FDIC institution data CSV columns to established ontologies and resources"@en ;
+    dcterms:created "2025-06-19"^^xsd:date ;
+    dcterms:creator "FDIC OMG Semantic Augmentation System" ;
+    dcterms:publisher "Federal Deposit Insurance Corporation" ;
+    dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;
+    owl:imports <https://spec.edmcouncil.org/fibo/ontology/> ,
+                <http://www.opengis.net/ont/geosparql#> ,
+                <http://www.geonames.org/ontology#> ;
+    rdfs:comment "This ontology provides comprehensive semantic mappings for FDIC CSV data columns to multiple ontologies and knowledge resources" .
+
+# Dataset metadata
+fdic:FDICBankDataset a dcat:Dataset ;
+    dcterms:title "FDIC-Insured Institutions Dataset" ;
+    dcterms:description "Comprehensive dataset of FDIC-insured financial institutions in the United States, including location data, institutional identifiers, and service types" ;
+    dcterms:publisher [ 
+        a foaf:Organization ;
+        foaf:name "Federal Deposit Insurance Corporation (FDIC)" ;
+        foaf:homepage <https://www.fdic.gov/>
+    ] ;
+    dcat:keyword "banking", "financial institutions", "FDIC", "geospatial data", "US banks" ;
+    dcterms:spatial [
+        a dcterms:Location ;
+        rdfs:label "United States of America"
+    ] ;
+    dcterms:temporal [
+        a dcterms:PeriodOfTime ;
+        rdfs:comment "Dataset is continuously updated"
+    ] ;
+    dcterms:conformsTo <https://spec.edmcouncil.org/fibo/ontology/> ,
+                       <http://www.opengis.net/ont/geosparql#> ;
+    prov:wasGeneratedBy [
+        a prov:Activity ;
+        rdfs:label "FDIC Data Collection and Reporting Process"
+    ] .
+
+# Resource documentation
+fdic:CitedResources a owl:Class ;
+    rdfs:label "Cited Resources"@en ;
+    rdfs:comment "Documentation of external resources used for semantic mappings"@en .
+
+fdic:FIBO_Resource a fdic:CitedResources ;
+    rdfs:label "Financial Industry Business Ontology (FIBO)" ;
+    dcterms:description "Industry-standard ontology for financial data developed by the EDM Council" ;
+    foaf:homepage <https://spec.edmcouncil.org/fibo/> ;
+    dcterms:source <https://github.com/edmcouncil/fibo> ;
+    dcterms:type "Well-formed Ontology Standard" .
+
+fdic:GeoSPARQL_Resource a fdic:CitedResources ;
+    rdfs:label "OGC GeoSPARQL" ;
+    dcterms:description "OGC standard for representing and querying geospatial data on the Semantic Web" ;
+    foaf:homepage <https://opengeospatial.github.io/ogc-geosparql/geosparql11/geo.html> ;
+    dcterms:type "Well-formed Ontology Standard" .
+
+fdic:GeoNames_Resource a fdic:CitedResources ;
+    rdfs:label "GeoNames Ontology" ;
+    dcterms:description "Ontology for geographical database covering all countries" ;
+    foaf:homepage <https://www.geonames.org/ontology/documentation.html> ;
+    dcterms:type "Well-formed Ontology" .
+
+fdic:SchemaOrg_Resource a fdic:CitedResources ;
+    rdfs:label "Schema.org" ;
+    dcterms:description "Collaborative vocabulary for structured data on the Internet" ;
+    foaf:homepage <https://schema.org/> ;
+    dcterms:type "Well-formed Vocabulary" .
+
+fdic:Wikipedia_Resource a fdic:CitedResources ;
+    rdfs:label "Wikipedia" ;
+    dcterms:description "Open encyclopedia used for general concept definitions" ;
+    foaf:homepage <https://en.wikipedia.org/> ;
+    dcterms:type "Non-ontological Resource" .
+
+fdic:Investopedia_Resource a fdic:CitedResources ;
+    rdfs:label "Investopedia Financial Dictionary" ;
+    dcterms:description "Comprehensive financial terms dictionary and educational resource" ;
+    foaf:homepage <https://www.investopedia.com/dictionary/> ;
+    dcterms:type "Non-ontological Resource" .
+
+# Column mapping class definition
+fdic:ColumnMapping a owl:Class ;
+    rdfs:label "Column Mapping"@en ;
+    rdfs:comment "A semantic mapping for a CSV column to ontological concepts"@en .
+
+# Properties for column mappings
+fdic:columnName a owl:DatatypeProperty ;
+    rdfs:label "column name"@en ;
+    rdfs:domain fdic:ColumnMapping ;
+    rdfs:range xsd:string .
+
+fdic:semanticType a owl:DatatypeProperty ;
+    rdfs:label "semantic type"@en ;
+    rdfs:comment "The high-level semantic category of the column"@en ;
+    rdfs:domain fdic:ColumnMapping ;
+    rdfs:range xsd:string .
+
+fdic:dataType a owl:DatatypeProperty ;
+    rdfs:label "data type"@en ;
+    rdfs:comment "The expected data type of values in this column"@en ;
+    rdfs:domain fdic:ColumnMapping ;
+    rdfs:range xsd:string .
+
+# X Coordinate Column
+fdic:column_X a fdic:ColumnMapping ;
+    fdic:columnName "X" ;
+    rdfs:label "X Coordinate"@en ;
+    dcterms:description "Longitude coordinate in decimal degrees" ;
+    fdic:semanticType "coordinate" ;
+    fdic:dataType "decimal" ;
+    rdfs:seeAlso geo:hasGeometry ,
+                  wgs84:long ,
+                  schema:longitude ,
+                  <https://en.wikipedia.org/wiki/Longitude> ;
+    owl:sameAs wikidata:Q34027 ; # Wikidata entity for longitude
+    rdfs:comment "Maps to longitude in geographic coordinate system. X coordinate represents the east-west position"@en ;
+    dcterms:references <https://www.w3.org/2003/01/geo/wgs84_pos#> .
+
+# Y Coordinate Column  
+fdic:column_Y a fdic:ColumnMapping ;
+    fdic:columnName "Y" ;
+    rdfs:label "Y Coordinate"@en ;
+    dcterms:description "Latitude coordinate in decimal degrees" ;
+    fdic:semanticType "coordinate" ;
+    fdic:dataType "decimal" ;
+    rdfs:seeAlso geo:hasGeometry ,
+                  wgs84:lat ,
+                  schema:latitude ,
+                  <https://en.wikipedia.org/wiki/Latitude> ;
+    owl:sameAs wikidata:Q34028 ; # Wikidata entity for latitude
+    rdfs:comment "Maps to latitude in geographic coordinate system. Y coordinate represents the north-south position"@en ;
+    dcterms:references <https://www.w3.org/2003/01/geo/wgs84_pos#> .
+
+# Longitude Column
+fdic:column_LONGITUDE a fdic:ColumnMapping ;
+    fdic:columnName "LONGITUDE" ;
+    rdfs:label "Longitude"@en ;
+    dcterms:description "Geographic longitude" ;
+    fdic:semanticType "coordinate" ;
+    fdic:dataType "decimal" ;
+    rdfs:seeAlso geo:longitude ;
+    owl:equivalentProperty geo:longitude .
+
+# Latitude Column
+fdic:column_LATITUDE a fdic:ColumnMapping ;
+    fdic:columnName "LATITUDE" ;
+    rdfs:label "Latitude"@en ;
+    dcterms:description "Geographic latitude" ;
+    fdic:semanticType "coordinate" ;
+    fdic:dataType "decimal" ;
+    rdfs:seeAlso geo:latitude ;
+    owl:equivalentProperty geo:latitude .
+
+# Bank Name Column
+fdic:column_NAME a fdic:ColumnMapping ;
+    fdic:columnName "NAME" ;
+    rdfs:label "Institution Name"@en ;
+    dcterms:description "Legal name of financial institution" ;
+    fdic:semanticType "bank_name" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso fibo-be:LegalEntity/fibo-fnd-rel-rel:hasLegalName ,
+                  fibo-fbc:FinancialInstitution ,
+                  schema:BankOrCreditUnion ,
+                  foaf:name ,
+                  <https://www.investopedia.com/terms/f/financialinstitution.asp> ,
+                  <https://en.wikipedia.org/wiki/Bank> ;
+    owl:sameAs wikidata:Q22687 ; # Wikidata entity for bank
+    rdfs:comment "The official legal name of the FDIC-insured institution as registered with regulatory authorities"@en ;
+    dcterms:references dbpedia:Bank .
+
+# Address Column
+fdic:column_ADDRESS a fdic:ColumnMapping ;
+    fdic:columnName "ADDRESS" ;
+    rdfs:label "Street Address"@en ;
+    dcterms:description "Physical street address of the institution" ;
+    fdic:semanticType "address" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso fibo-fnd-plc-adr:StreetAddress ,
+                  vcard:street-address ,
+                  schema:streetAddress ,
+                  <https://pe.usps.com/text/pub28/welcome.htm> ; # USPS Postal Addressing Standards
+    rdfs:comment "Street address of the institution's physical location, formatted according to USPS standards"@en ;
+    dcterms:conformsTo <https://www.usps.com/manage/forward-mail.htm> .
+
+# City Column
+fdic:column_CITY a fdic:ColumnMapping ;
+    fdic:columnName "CITY" ;
+    rdfs:label "City"@en ;
+    dcterms:description "City name" ;
+    fdic:semanticType "location" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso geonames:name ;
+    rdfs:comment "City where the institution is located"@en .
+
+# State Code Column
+fdic:column_STALP a fdic:ColumnMapping ;
+    fdic:columnName "STALP" ;
+    rdfs:label "State Code"@en ;
+    dcterms:description "State abbreviation" ;
+    fdic:semanticType "state_code" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso geonames:stateCode ;
+    rdfs:comment "Two-letter state abbreviation code"@en .
+
+# State Name Column
+fdic:column_STNAME a fdic:ColumnMapping ;
+    fdic:columnName "STNAME" ;
+    rdfs:label "State Name"@en ;
+    dcterms:description "State name" ;
+    fdic:semanticType "state_name" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso geonames:name ;
+    rdfs:comment "Full name of the state"@en .
+
+# ZIP Code Column
+fdic:column_ZIP a fdic:ColumnMapping ;
+    fdic:columnName "ZIP" ;
+    rdfs:label "ZIP Code"@en ;
+    dcterms:description "United States Postal Service ZIP code" ;
+    fdic:semanticType "postal_code" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso fibo-fnd-plc-adr:PostCodeIdentifier ,
+                  vcard:postal-code ,
+                  schema:postalCode ,
+                  <https://tools.usps.com/go/ZipLookupAction> ,
+                  <https://en.wikipedia.org/wiki/ZIP_Code> ;
+    owl:sameAs wikidata:Q136208 ; # Wikidata entity for ZIP code
+    rdfs:comment "5-digit Zone Improvement Plan (ZIP) postal code used by USPS for mail delivery"@en ;
+    dcterms:conformsTo <https://pe.usps.com/cpim/ftp/pubs/Pub28/pub28.pdf> .
+
+# FDIC Certificate Number Column
+fdic:column_CERT a fdic:ColumnMapping ;
+    fdic:columnName "CERT" ;
+    rdfs:label "FDIC Certificate Number"@en ;
+    dcterms:description "Unique FDIC-assigned certificate of insurance number" ;
+    fdic:semanticType "fdic_certificate" ;
+    fdic:dataType "integer" ;
+    rdfs:seeAlso fibo-be:GovernmentIssuedLicense ,
+                  fibo-fbc:RegulatoryLicense ,
+                  schema:identifier ,
+                  <https://www.fdic.gov/resources/bankers/call-reports/crinst-031/2019/2019-03-crinst-031-rc-a.pdf> ,
+                  <https://en.wikipedia.org/wiki/Federal_Deposit_Insurance_Corporation#Certificate_numbers> ;
+    owl:sameAs wikidata:Q116907062 ; # Wikidata property for FDIC certificate number
+    rdfs:comment "Unique identifier assigned by the FDIC when granting deposit insurance. This number remains constant throughout the institution's existence"@en ;
+    dcterms:issued "Federal Deposit Insurance Corporation" ;
+    owl:equivalentClass [ 
+        a owl:Restriction ;
+        owl:onProperty dcterms:identifier ;
+        owl:hasValue "FDIC Certificate Number"^^xsd:string
+    ] .
+
+# Bank Class Column
+fdic:column_BKCLASS a fdic:ColumnMapping ;
+    fdic:columnName "BKCLASS" ;
+    rdfs:label "Bank Classification"@en ;
+    dcterms:description "Bank classification code" ;
+    fdic:semanticType "bank_class" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso fibo:BusinessEntities/OrganizationClassification ;
+    rdfs:comment "Classification code indicating the type of banking institution"@en .
+
+# Service Type Description Column
+fdic:column_SERVTYPE_DESC a fdic:ColumnMapping ;
+    fdic:columnName "SERVTYPE_DESC" ;
+    rdfs:label "Service Type Description"@en ;
+    dcterms:description "Type of banking service provided" ;
+    fdic:semanticType "service_description" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso fibo:ProductsAndServices/Service ;
+    rdfs:comment "Description of the primary service type offered by the institution"@en .
