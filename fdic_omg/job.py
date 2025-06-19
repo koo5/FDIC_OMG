@@ -87,29 +87,37 @@ def process_fdic_omg_job(
         with open(metadata_path, 'w') as f:
             json.dump(metadata, f, indent=2)
         
+        # Construct full URLs for all reports (matching Prolog actor pattern)
+        base_result_url = f"{public_url}/tmp/{result_tmp_directory_name}/"
+        
         # Return Robust result format
         return {
             "alerts": [],
             "reports": [
                 {
+                    "key": "task_directory",
+                    "title": "Task Directory", 
+                    "val": {"url": base_result_url}
+                },
+                {
                     "key": "fdic_omg_report",
                     "title": "FDIC OMG Semantic Augmentation Report",
-                    "val": {"url": "fdic_omg_report.html"}
+                    "val": {"url": base_result_url + "fdic_omg_report.html"}
                 },
                 {
                     "key": "fdic_turtle",
                     "title": "RDF Turtle Format",
-                    "val": {"url": "fdic_semantic.ttl"}
+                    "val": {"url": base_result_url + "fdic_semantic.ttl"}
                 },
                 {
                     "key": "fdic_jsonld",
                     "title": "JSON-LD Format",
-                    "val": {"url": "fdic_semantic.jsonld"}
+                    "val": {"url": base_result_url + "fdic_semantic.jsonld"}
                 },
                 {
                     "key": "fdic_mappings",
                     "title": "Column Mappings Metadata",
-                    "val": {"url": "column_mappings.json"}
+                    "val": {"url": base_result_url + "column_mappings.json"}
                 }
             ],
             "uris": {
