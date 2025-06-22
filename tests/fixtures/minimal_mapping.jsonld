@@ -1,0 +1,66 @@
+{
+  "@context": {
+    "@version": 1.1,
+    "@base": "http://example.org/fdic/",
+    "fdic": "http://example.org/fdic/ontology#",
+    "dcterms": "http://purl.org/dc/terms/",
+    "dcat": "http://www.w3.org/ns/dcat#",
+    "foaf": "http://xmlns.com/foaf/0.1/",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "ColumnMapping": "fdic:ColumnMapping",
+    "columnName": "fdic:columnName",
+    "semanticType": "fdic:semanticType",
+    "dataType": "fdic:dataType",
+    "label": "rdfs:label",
+    "description": "dcterms:description",
+    "seeAlso": "rdfs:seeAlso",
+    "Dataset": "dcat:Dataset",
+    "title": "dcterms:title",
+    "keyword": "dcat:keyword",
+    "publisher": "dcterms:publisher",
+    "name": "foaf:name",
+    "homepage": "foaf:homepage",
+    "Organization": "foaf:Organization"
+  },
+  "@graph": [
+    {
+      "@id": "test-column-mappings",
+      "@type": "owl:Ontology",
+      "label": "Test FDIC Column Mappings",
+      "title": "Test FDIC CSV Column Semantic Mappings"
+    },
+    {
+      "@id": "fdic:TestFDICDataset",
+      "@type": "Dataset",
+      "title": "Test FDIC Dataset",
+      "description": "Minimal test dataset",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Test Publisher",
+        "homepage": "https://test.org"
+      },
+      "keyword": ["test", "fdic"]
+    },
+    {
+      "@id": "fdic:column_TEST_ID",
+      "@type": "ColumnMapping",
+      "columnName": "TEST_ID",
+      "label": "Test Identifier",
+      "description": "A test identifier column",
+      "semanticType": "identifier",
+      "dataType": "integer",
+      "seeAlso": "https://test-ontology.org/identifier"
+    },
+    {
+      "@id": "fdic:column_TEST_NAME",
+      "@type": "ColumnMapping",
+      "columnName": "TEST_NAME",
+      "label": "Test Name",
+      "description": "A test name column",
+      "semanticType": "name",
+      "dataType": "string",
+      "seeAlso": "http://xmlns.com/foaf/0.1/name"
+    }
+  ]
+}

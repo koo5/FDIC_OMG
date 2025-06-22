@@ -1,0 +1,41 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix fdic: <http://example.org/fdic/ontology#> .
+
+# Test ontology
+<http://example.org/fdic/test-column-mappings> a owl:Ontology ;
+    rdfs:label "Test FDIC Column Mappings"@en ;
+    dcterms:title "Test FDIC CSV Column Semantic Mappings"@en .
+
+# Test dataset
+fdic:TestFDICDataset a dcat:Dataset ;
+    dcterms:title "Test FDIC Dataset" ;
+    dcterms:description "Minimal test dataset" ;
+    dcterms:publisher [
+        a foaf:Organization ;
+        foaf:name "Test Publisher" ;
+        foaf:homepage <https://test.org>
+    ] ;
+    dcat:keyword "test", "fdic" .
+
+# Test columns
+fdic:column_TEST_ID a fdic:ColumnMapping ;
+    fdic:columnName "TEST_ID" ;
+    rdfs:label "Test Identifier"@en ;
+    dcterms:description "A test identifier column" ;
+    fdic:semanticType "identifier" ;
+    fdic:dataType "integer" ;
+    rdfs:seeAlso <https://test-ontology.org/identifier> ;
+    rdfs:comment "This is a test identifier"@en .
+
+fdic:column_TEST_NAME a fdic:ColumnMapping ;
+    fdic:columnName "TEST_NAME" ;
+    rdfs:label "Test Name"@en ;
+    dcterms:description "A test name column" ;
+    fdic:semanticType "name" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso foaf:name .

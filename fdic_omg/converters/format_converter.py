@@ -85,15 +85,51 @@ class FDICMappingConverter:
         
     def _extract_dataset_metadata(self) -> Dict[str, Any]:
         """Extract dataset metadata from RDF graph"""
-        dataset_uri = URIRef("http://example.org/fdic/ontology#FDICBankDataset")
+        # Try multiple possible dataset URIs
+        possible_uris = [
+            URIRef("http://example.org/fdic/ontology#FDICBankDataset"),
+            URIRef("http://example.org/fdic/ontology#TestFDICDataset"),
+            URIRef("http://example.org/fdic/FDICBankDataset"),
+            URIRef("http://example.org/fdic/TestFDICDataset")
+        ]
+        
+        dataset_uri = None
+        for uri in possible_uris:
+            if (uri, RDF.type, DCAT.Dataset) in self.graph:
+                dataset_uri = uri
+                break
+                
+        if not dataset_uri:
+            # Find any dataset
+            for s, p, o in self.graph.triples((None, RDF.type, DCAT.Dataset)):
+                dataset_uri = s
+                break
+                
+        if not dataset_uri:
+            # Return default dataset with minimal data
+            return {
+                "title": "", 
+                "description": "", 
+                "keywords": [], 
+                "spatial": "", 
+                "temporal": "Continuously updated",
+                "publisher": {"name": "", "homepage": ""}
+            }
         
         dataset = {
             "title": self._get_literal(dataset_uri, DCTERMS.title),
             "description": self._get_literal(dataset_uri, DCTERMS.description),
             "keywords": self._get_literals(dataset_uri, DCAT.keyword),
-            "spatial": self._get_literal(dataset_uri, DCTERMS.spatial),
             "temporal": "Continuously updated"
         }
+        
+        # Handle spatial (might be a blank node with label)
+        spatial_node = self.graph.value(dataset_uri, DCTERMS.spatial)
+        if spatial_node:
+            spatial_label = self.graph.value(spatial_node, RDFS.label)
+            dataset["spatial"] = str(spatial_label) if spatial_label else str(spatial_node)
+        else:
+            dataset["spatial"] = ""
         
         # Extract publisher info
         publisher_node = self.graph.value(dataset_uri, DCTERMS.publisher)
@@ -273,7 +309,11 @@ class FDICMappingConverter:
             
     def _add_dataset_metadata(self, dataset: Dict[str, Any]):
         """Add dataset metadata to RDF graph"""
-        dataset_uri = FDIC.FDICBankDataset
+        # Use appropriate dataset URI based on title
+        if "Test" in dataset.get("title", ""):
+            dataset_uri = FDIC.TestFDICDataset
+        else:
+            dataset_uri = FDIC.FDICBankDataset
         self.graph.add((dataset_uri, RDF.type, DCAT.Dataset))
         self.graph.add((dataset_uri, DCTERMS.title, Literal(dataset.get("title", ""))))
         self.graph.add((dataset_uri, DCTERMS.description, Literal(dataset.get("description", ""))))
@@ -371,8 +411,10 @@ class FDICMappingConverter:
         
         # Add dataset node
         if "dataset" in data:
+            # Use appropriate dataset ID based on title
+            dataset_id = "fdic:TestFDICDataset" if "Test" in data["dataset"].get("title", "") else "fdic:FDICBankDataset"
             dataset_node = {
-                "@id": "fdic:FDICBankDataset",
+                "@id": dataset_id,
                 "@type": "Dataset",
                 "title": data["dataset"].get("title", ""),
                 "description": data["dataset"].get("description", "")

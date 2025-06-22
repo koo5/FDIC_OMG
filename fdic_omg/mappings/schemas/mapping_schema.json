@@ -116,7 +116,8 @@
                 "postal_code",
                 "fdic_certificate",
                 "bank_class",
-                "service_description"
+                "service_description",
+                "identifier"
               ]
             },
             "data_type": {
