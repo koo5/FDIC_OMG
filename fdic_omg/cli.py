@@ -78,8 +78,10 @@ def generate_challenge_metadata(column_mappings):
 @click.option('--format', '-f', type=click.Choice(['turtle', 'n3', 'nt', 'json-ld', 'xml']), default='turtle', help='RDF output format')
 @click.option('--max-rows', type=int, help='Maximum number of rows to process')
 @click.option('--mappings-only', is_flag=True, help='Only output column mappings as JSON')
+@click.option('--generate-viewer', type=click.Path(), help='Generate interactive web viewer in specified directory')
+@click.option('--rows-per-page', default=1000, help='Rows per page for viewer pagination (default: 1000)')
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose logging')
-def cli(csv_file, result_uri, output, format, max_rows, mappings_only, verbose):
+def cli(csv_file, result_uri, output, format, max_rows, mappings_only, generate_viewer, rows_per_page, verbose):
     """
     FDIC OMG Semantic Augmentation CLI
     
@@ -92,6 +94,12 @@ def cli(csv_file, result_uri, output, format, max_rows, mappings_only, verbose):
         
         # Generate JSON-LD with row limit
         python fdic_omg_cli.py data.csv --format json-ld --max-rows 100
+        
+        # Generate interactive web viewer
+        python fdic_omg_cli.py data.csv --generate-viewer ./viewer_output
+        
+        # Generate viewer with custom pagination
+        python fdic_omg_cli.py data.csv --generate-viewer ./viewer --rows-per-page 500
         
         # Output mappings metadata only
         python fdic_omg_cli.py data.csv --mappings-only -o mappings.json
@@ -118,9 +126,29 @@ def cli(csv_file, result_uri, output, format, max_rows, mappings_only, verbose):
             click.echo(json.dumps(metadata, indent=2))
         return
     
+    # Initialize generator
+    generator = FDICRDFGenerator(result_uri)
+    
+    if generate_viewer:
+        # Generate interactive viewer
+        click.echo(f"Generating interactive viewer for {csv_file}...")
+        viewer_results = generator.generate_viewer_output(
+            Path(csv_file), 
+            Path(generate_viewer), 
+            rows_per_page
+        )
+        
+        click.echo(f"✓ Interactive viewer generated in {generate_viewer}")
+        click.echo(f"✓ Processed {viewer_results['total_rows']} rows in {viewer_results['total_pages']} pages")
+        click.echo(f"✓ Manifest file: {viewer_results['manifest_file']}")
+        click.echo(f"\nTo view the table:")
+        click.echo(f"1. Start a web server: python -m http.server 8000 -d {generate_viewer}")
+        click.echo(f"2. Open browser: http://localhost:8000?node=<{result_uri}dataset>")
+        return
+    
     # Generate RDF
     click.echo(f"Processing {csv_file}...")
-    results = generate_fdic_rdf(csv_file, result_uri, max_rows)
+    results = generator.process_csv(Path(csv_file), max_rows)
     
     # Output results
     if output:

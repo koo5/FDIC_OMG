@@ -8,6 +8,8 @@
 @prefix fibo: <https://spec.edmcouncil.org/fibo/ontology/> .
 @prefix fibo-fbc: <https://spec.edmcouncil.org/fibo/ontology/FBC/> .
 @prefix fibo-be: <https://spec.edmcouncil.org/fibo/ontology/BE/> .
+@prefix fibo-fnd-plc-adr: <https://spec.edmcouncil.org/fibo/ontology/FND/Places/Addresses/> .
+@prefix fibo-fnd-rel-rel: <https://spec.edmcouncil.org/fibo/ontology/FND/Relations/Relations/> .
 @prefix geo: <http://www.opengis.net/ont/geosparql#> .
 @prefix geonames: <http://www.geonames.org/ontology#> .
 @prefix schema: <https://schema.org/> .
@@ -179,7 +181,7 @@ fdic:column_NAME a fdic:ColumnMapping ;
     dcterms:description "Legal name of financial institution" ;
     fdic:semanticType "bank_name" ;
     fdic:dataType "string" ;
-    rdfs:seeAlso fibo-be:LegalEntity/fibo-fnd-rel-rel:hasLegalName ,
+    rdfs:seeAlso <https://spec.edmcouncil.org/fibo/ontology/BE/LegalEntities/LegalPersons/hasLegalName> ,
                   fibo-fbc:FinancialInstitution ,
                   schema:BankOrCreditUnion ,
                   foaf:name ,
@@ -277,7 +279,7 @@ fdic:column_BKCLASS a fdic:ColumnMapping ;
     dcterms:description "Bank classification code" ;
     fdic:semanticType "bank_class" ;
     fdic:dataType "string" ;
-    rdfs:seeAlso fibo:BusinessEntities/OrganizationClassification ;
+    rdfs:seeAlso <https://spec.edmcouncil.org/fibo/ontology/BE/Corporations/Corporations/OrganizationClassification> ;
     rdfs:comment "Classification code indicating the type of banking institution"@en .
 
 # Service Type Description Column
@@ -287,5 +289,5 @@ fdic:column_SERVTYPE_DESC a fdic:ColumnMapping ;
     dcterms:description "Type of banking service provided" ;
     fdic:semanticType "service_description" ;
     fdic:dataType "string" ;
-    rdfs:seeAlso fibo:ProductsAndServices/Service ;
+    rdfs:seeAlso <https://spec.edmcouncil.org/fibo/ontology/FND/ProductsAndServices/ProductsAndServices/Service> ;
     rdfs:comment "Description of the primary service type offered by the institution"@en .

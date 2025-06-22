@@ -55,7 +55,7 @@ class FDICRDFGenerator:
         mappings = {}
         
         # Load the TTL file
-        mappings_file = Path(__file__).parent / "column_mappings.ttl"
+        mappings_file = Path(__file__).parent / "mappings" / "column_mappings.ttl"
         if not mappings_file.exists():
             log.error(f"Column mappings file not found: {mappings_file}")
             return {}

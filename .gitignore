@@ -1,3 +1,5 @@
 test_output.ttl
 fdic_omg.egg-info/
 __pycache__/
+venv
+./fdic_omg.egg-info
