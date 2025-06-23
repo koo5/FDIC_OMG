@@ -1,0 +1,121 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FDIC RDF Conversion Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background-color: white; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+        h2 { color: #34495e; margin-top: 30px; }
+        .success { background-color: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin: 10px 0; }
+        .metadata { background-color: #f8f9fa; padding: 15px; margin: 15px 0; border-left: 4px solid #3498db; }
+        table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #3498db; color: white; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
+        .stats { display: flex; justify-content: space-around; margin: 20px 0; }
+        .stat-box { text-align: center; padding: 20px; background-color: #ecf0f1; border-radius: 5px; }
+        .stat-number { font-size: 36px; color: #3498db; font-weight: bold; }
+        .stat-label { color: #7f8c8d; margin-top: 5px; }
+        .download-link { display: inline-block; margin: 10px 10px 10px 0; padding: 10px 20px; background-color: #3498db; color: white; text-decoration: none; border-radius: 5px; }
+        .download-link:hover { background-color: #2980b9; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>FDIC RDF Conversion Report</h1>
+        
+        <div class="success">
+            <strong>✅ Success!</strong> FDIC CSV has been successfully converted to RDF with semantic annotations
+        </div>
+        
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-number">246</div>
+                <div class="stat-label">RDF Triples</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">2</div>
+                <div class="stat-label">Rows Processed</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">8/8</div>
+                <div class="stat-label">Annotated Columns</div>
+            </div>
+        </div>
+        
+        <div class="metadata">
+            <h2>Dataset Information</h2>
+            <p><strong>Source File:</strong> sample_fdic.csv</p>
+            <p><strong>Table URI:</strong> http://example.org/fdic/data#table_sample_fdic</p>
+            <p><strong>Generated:</strong> 2025-06-23 02:57:35</p>
+        </div>
+        
+        <h2>📥 Output</h2>
+        <p>The RDF output is available in Turtle format (.ttl), which is a human-readable RDF serialization.</p>
+        
+        <h2>📊 Column Annotations</h2>
+        <p>The following columns have been enriched with semantic annotations:</p>
+        <table>
+            <tr>
+                <th>Column Name</th>
+                <th>Description</th>
+                <th>Annotation URI</th>
+            </tr>
+
+            <tr>
+                <td><strong>ADDRESS</strong></td>
+                <td>Physical street address of the institution</td>
+                <td><code>http://example.org/fdic/ontology#annotation_ADDRESS</code></td>
+            </tr>
+            <tr>
+                <td><strong>CERT</strong></td>
+                <td>Unique FDIC-assigned identifier for the institution</td>
+                <td><code>http://example.org/fdic/ontology#annotation_CERT</code></td>
+            </tr>
+            <tr>
+                <td><strong>CITY</strong></td>
+                <td>City where the institution is located</td>
+                <td><code>http://example.org/fdic/ontology#annotation_CITY</code></td>
+            </tr>
+            <tr>
+                <td><strong>NAME</strong></td>
+                <td>Legal name of financial institution</td>
+                <td><code>http://example.org/fdic/ontology#annotation_NAME</code></td>
+            </tr>
+            <tr>
+                <td><strong>STALP</strong></td>
+                <td>Two-letter state abbreviation</td>
+                <td><code>http://example.org/fdic/ontology#annotation_STALP</code></td>
+            </tr>
+            <tr>
+                <td><strong>X</strong></td>
+                <td>Geographic longitude coordinate</td>
+                <td><code>http://example.org/fdic/ontology#annotation_X</code></td>
+            </tr>
+            <tr>
+                <td><strong>Y</strong></td>
+                <td>Geographic latitude coordinate</td>
+                <td><code>http://example.org/fdic/ontology#annotation_Y</code></td>
+            </tr>
+            <tr>
+                <td><strong>ZIP</strong></td>
+                <td>5-digit postal code</td>
+                <td><code>http://example.org/fdic/ontology#annotation_ZIP</code></td>
+            </tr>
+        </table>
+        
+        <div class="metadata">
+            <h2>About This Conversion</h2>
+            <p>This RDF conversion follows a simplified approach where:</p>
+            <ul>
+                <li>CSV structure is represented as Tables, Columns, Rows, and Cells</li>
+                <li>Column annotations are loaded from a separate RDF file and linked by column name</li>
+                <li>All annotations and external ontology references are preserved via rdfs:seeAlso links</li>
+                <li>The output is a single, clean RDF graph in Turtle format</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

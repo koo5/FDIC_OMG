@@ -1,0 +1,178 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix fdic: <http://example.org/fdic/ontology#> .
+@prefix fibo: <https://spec.edmcouncil.org/fibo/ontology/> .
+@prefix fibo-fbc: <https://spec.edmcouncil.org/fibo/ontology/FBC/> .
+@prefix fibo-be: <https://spec.edmcouncil.org/fibo/ontology/BE/> .
+@prefix fibo-fnd-plc-adr: <https://spec.edmcouncil.org/fibo/ontology/FND/Places/Addresses/> .
+@prefix geo: <http://www.opengis.net/ont/geosparql#> .
+@prefix geonames: <http://www.geonames.org/ontology#> .
+@prefix schema: <https://schema.org/> .
+@prefix wgs84: <http://www.w3.org/2003/01/geo/wgs84_pos#> .
+@prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix wikidata: <http://www.wikidata.org/entity/> .
+@prefix dbpedia: <http://dbpedia.org/resource/> .
+
+# Simple column annotations for FDIC data with external references
+
+# X/Longitude Column
+fdic:annotation_X a fdic:ColumnAnnotation ;
+    fdic:columnName "X" ;
+    rdfs:label "Longitude"@en ;
+    dcterms:description "Geographic longitude coordinate" ;
+    fdic:dataType "decimal" ;
+    rdfs:seeAlso geo:longitude ,
+                  wgs84:long ,
+                  <https://en.wikipedia.org/wiki/Longitude> ,
+                  <https://www.iso.org/standard/39242.html> .
+
+fdic:annotation_LONGITUDE a fdic:ColumnAnnotation ;
+    fdic:columnName "LONGITUDE" ;
+    rdfs:label "Longitude"@en ;
+    dcterms:description "Geographic longitude coordinate" ;
+    fdic:dataType "decimal" ;
+    rdfs:seeAlso geo:longitude ,
+                  wgs84:long ,
+                  <https://en.wikipedia.org/wiki/Longitude> ,
+                  <https://www.iso.org/standard/39242.html> .
+
+# Y/Latitude Column  
+fdic:annotation_Y a fdic:ColumnAnnotation ;
+    fdic:columnName "Y" ;
+    rdfs:label "Latitude"@en ;
+    dcterms:description "Geographic latitude coordinate" ;
+    fdic:dataType "decimal" ;
+    rdfs:seeAlso geo:latitude ,
+                  wgs84:lat ,
+                  <https://en.wikipedia.org/wiki/Latitude> ,
+                  <https://www.iso.org/standard/39242.html> .
+
+fdic:annotation_LATITUDE a fdic:ColumnAnnotation ;
+    fdic:columnName "LATITUDE" ;
+    rdfs:label "Latitude"@en ;
+    dcterms:description "Geographic latitude coordinate" ;
+    fdic:dataType "decimal" ;
+    rdfs:seeAlso geo:latitude ,
+                  wgs84:lat ,
+                  <https://en.wikipedia.org/wiki/Latitude> ,
+                  <https://www.iso.org/standard/39242.html> .
+
+# Bank Name Column
+fdic:annotation_NAME a fdic:ColumnAnnotation ;
+    fdic:columnName "NAME" ;
+    rdfs:label "Institution Name"@en ;
+    dcterms:description "Legal name of financial institution" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso <https://spec.edmcouncil.org/fibo/ontology/BE/LegalEntities/LegalPersons/hasLegalName> ,
+                  fibo-fbc:FinancialInstitution ,
+                  schema:BankOrCreditUnion ,
+                  foaf:name ,
+                  <https://www.investopedia.com/terms/f/financialinstitution.asp> ,
+                  <https://en.wikipedia.org/wiki/Bank> ,
+                  wikidata:Q22687 ,
+                  dbpedia:Bank .
+
+# Address Column
+fdic:annotation_ADDRESS a fdic:ColumnAnnotation ;
+    fdic:columnName "ADDRESS" ;
+    rdfs:label "Street Address"@en ;
+    dcterms:description "Physical street address of the institution" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso fibo-fnd-plc-adr:StreetAddress ,
+                  vcard:street-address ,
+                  schema:streetAddress ,
+                  <https://pe.usps.com/text/pub28/welcome.htm> ,
+                  <https://www.usps.com/manage/forward-mail.htm> .
+
+# City Column
+fdic:annotation_CITY a fdic:ColumnAnnotation ;
+    fdic:columnName "CITY" ;
+    rdfs:label "City"@en ;
+    dcterms:description "City where the institution is located" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso geonames:name ,
+                  schema:addressLocality ,
+                  fibo-fnd-plc-adr:hasCity ,
+                  <https://www.geonames.org/> .
+
+# State Columns
+fdic:annotation_STALP a fdic:ColumnAnnotation ;
+    fdic:columnName "STALP" ;
+    rdfs:label "State Code"@en ;
+    dcterms:description "Two-letter state abbreviation" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso fibo-fnd-plc-adr:hasSubdivision ,
+                  <https://pe.usps.com/text/pub28/28apb.htm> ,
+                  <https://www.iso.org/standard/63545.html> .
+
+fdic:annotation_STNAME a fdic:ColumnAnnotation ;
+    fdic:columnName "STNAME" ;
+    rdfs:label "State Name"@en ;
+    dcterms:description "Full state name" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso geonames:name ,
+                  schema:addressRegion ,
+                  fibo-fnd-plc-adr:hasSubdivision ,
+                  <https://www.census.gov/geo/reference/state-area.html> .
+
+# ZIP Code Column
+fdic:annotation_ZIP a fdic:ColumnAnnotation ;
+    fdic:columnName "ZIP" ;
+    rdfs:label "ZIP Code"@en ;
+    dcterms:description "5-digit postal code" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso fibo-fnd-plc-adr:hasPostalCode ,
+                  vcard:postal-code ,
+                  schema:postalCode ,
+                  <https://www.usps.com/nationalpremieraccounts/findzipcodes.htm> ,
+                  <https://en.wikipedia.org/wiki/ZIP_Code> .
+
+# FDIC Certificate Number
+fdic:annotation_CERT a fdic:ColumnAnnotation ;
+    fdic:columnName "CERT" ;
+    rdfs:label "FDIC Certificate Number"@en ;
+    dcterms:description "Unique FDIC-assigned identifier for the institution" ;
+    fdic:dataType "integer" ;
+    rdfs:seeAlso fibo-fbc:hasRegistrationIdentifier ,
+                  <https://www.fdic.gov/bank/individual/failed/banklist.html> ,
+                  <https://banks.data.fdic.gov/docs/> .
+
+# FED ID Column
+fdic:annotation_FED a fdic:ColumnAnnotation ;
+    fdic:columnName "FED" ;
+    rdfs:label "Federal Reserve District"@en ;
+    dcterms:description "Federal Reserve district number" ;
+    fdic:dataType "integer" ;
+    rdfs:seeAlso <https://www.federalreserve.gov/aboutthefed/federal-reserve-system.htm> ,
+                  <https://en.wikipedia.org/wiki/Federal_Reserve_Bank> ,
+                  wikidata:Q53536 .
+
+# RSSD ID Column  
+fdic:annotation_RSSD a fdic:ColumnAnnotation ;
+    fdic:columnName "RSSD" ;
+    rdfs:label "RSSD ID"@en ;
+    dcterms:description "Federal Reserve RSSD identifier" ;
+    fdic:dataType "integer" ;
+    rdfs:seeAlso fibo-fbc:hasRegistrationIdentifier ,
+                  <https://www.federalreserve.gov/reportforms/forms/FR_Y-1020191231_f.pdf> ,
+                  <https://www.ffiec.gov/npw/Help/InstitutionIDTypes> .
+
+# Service Type Columns
+fdic:annotation_SERVTYPE a fdic:ColumnAnnotation ;
+    fdic:columnName "SERVTYPE" ;
+    rdfs:label "Service Type"@en ;
+    dcterms:description "Type of banking services offered" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso fibo-fbc:hasServiceType ,
+                  schema:serviceType .
+
+fdic:annotation_SERVTYPE_DESC a fdic:ColumnAnnotation ;
+    fdic:columnName "SERVTYPE_DESC" ;
+    rdfs:label "Service Type Description"@en ;
+    dcterms:description "Description of banking services offered" ;
+    fdic:dataType "string" ;
+    rdfs:seeAlso fibo-fbc:hasServiceType ,
+                  schema:serviceType .

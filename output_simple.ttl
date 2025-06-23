@@ -1,0 +1,297 @@
+@prefix data: <http://example.org/fdic/data#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix fdic: <http://example.org/fdic/ontology#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix geo: <http://www.opengis.net/ont/geosparql#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <https://schema.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+data:table_sample_fdic a fdic:Table ;
+    fdic:hasColumn _:N040b0e9ad74b4f93aa028d41ec8a4245,
+        _:N0d004df6bbdb4e2898fde87786a95e19,
+        _:N21d91c1382ba44cc9eec21a95bfdc3eb,
+        _:N5279d8dcfa35487981142fe79c150884,
+        _:N701fabfe2bc14e4ba8c94faf3210fb5f,
+        _:Nc6167d99e47845f9bd415a1ae1fd4b91,
+        _:Ncedefdd776e5445a989f10ddea9f2cba,
+        _:Nf44d567f3ae34ec2848b8f8ab18dae8b ;
+    fdic:hasRow _:N3c496f7dbda54d28a0408a4c39415953,
+        _:N573faaa9805e4b8baad5fc1a600745ed ;
+    dcterms:created "2025-06-23T02:57:35.664431"^^xsd:dateTime ;
+    dcterms:title "FDIC Table: sample_fdic.csv" .
+
+fdic:annotation_FED a fdic:ColumnAnnotation ;
+    rdfs:label "Federal Reserve District"@en ;
+    fdic:columnName "FED" ;
+    fdic:dataType "integer" ;
+    dcterms:description "Federal Reserve district number" ;
+    rdfs:seeAlso <http://www.wikidata.org/entity/Q53536>,
+        <https://en.wikipedia.org/wiki/Federal_Reserve_Bank>,
+        <https://www.federalreserve.gov/aboutthefed/federal-reserve-system.htm> .
+
+fdic:annotation_LATITUDE a fdic:ColumnAnnotation ;
+    rdfs:label "Latitude"@en ;
+    fdic:columnName "LATITUDE" ;
+    fdic:dataType "decimal" ;
+    dcterms:description "Geographic latitude coordinate" ;
+    rdfs:seeAlso geo:latitude,
+        <http://www.w3.org/2003/01/geo/wgs84_pos#lat>,
+        <https://en.wikipedia.org/wiki/Latitude>,
+        <https://www.iso.org/standard/39242.html> .
+
+fdic:annotation_LONGITUDE a fdic:ColumnAnnotation ;
+    rdfs:label "Longitude"@en ;
+    fdic:columnName "LONGITUDE" ;
+    fdic:dataType "decimal" ;
+    dcterms:description "Geographic longitude coordinate" ;
+    rdfs:seeAlso geo:longitude,
+        <http://www.w3.org/2003/01/geo/wgs84_pos#long>,
+        <https://en.wikipedia.org/wiki/Longitude>,
+        <https://www.iso.org/standard/39242.html> .
+
+fdic:annotation_RSSD a fdic:ColumnAnnotation ;
+    rdfs:label "RSSD ID"@en ;
+    fdic:columnName "RSSD" ;
+    fdic:dataType "integer" ;
+    dcterms:description "Federal Reserve RSSD identifier" ;
+    rdfs:seeAlso <https://spec.edmcouncil.org/fibo/ontology/FBC/hasRegistrationIdentifier>,
+        <https://www.federalreserve.gov/reportforms/forms/FR_Y-1020191231_f.pdf>,
+        <https://www.ffiec.gov/npw/Help/InstitutionIDTypes> .
+
+fdic:annotation_SERVTYPE a fdic:ColumnAnnotation ;
+    rdfs:label "Service Type"@en ;
+    fdic:columnName "SERVTYPE" ;
+    fdic:dataType "string" ;
+    dcterms:description "Type of banking services offered" ;
+    rdfs:seeAlso schema:serviceType,
+        <https://spec.edmcouncil.org/fibo/ontology/FBC/hasServiceType> .
+
+fdic:annotation_SERVTYPE_DESC a fdic:ColumnAnnotation ;
+    rdfs:label "Service Type Description"@en ;
+    fdic:columnName "SERVTYPE_DESC" ;
+    fdic:dataType "string" ;
+    dcterms:description "Description of banking services offered" ;
+    rdfs:seeAlso schema:serviceType,
+        <https://spec.edmcouncil.org/fibo/ontology/FBC/hasServiceType> .
+
+fdic:annotation_STNAME a fdic:ColumnAnnotation ;
+    rdfs:label "State Name"@en ;
+    fdic:columnName "STNAME" ;
+    fdic:dataType "string" ;
+    dcterms:description "Full state name" ;
+    rdfs:seeAlso <http://www.geonames.org/ontology#name>,
+        schema:addressRegion,
+        <https://spec.edmcouncil.org/fibo/ontology/FND/Places/Addresses/hasSubdivision>,
+        <https://www.census.gov/geo/reference/state-area.html> .
+
+fdic:annotation_ADDRESS a fdic:ColumnAnnotation ;
+    rdfs:label "Street Address"@en ;
+    fdic:columnName "ADDRESS" ;
+    fdic:dataType "string" ;
+    dcterms:description "Physical street address of the institution" ;
+    rdfs:seeAlso <http://www.w3.org/2006/vcard/ns#street-address>,
+        <https://pe.usps.com/text/pub28/welcome.htm>,
+        schema:streetAddress,
+        <https://spec.edmcouncil.org/fibo/ontology/FND/Places/Addresses/StreetAddress>,
+        <https://www.usps.com/manage/forward-mail.htm> .
+
+fdic:annotation_CERT a fdic:ColumnAnnotation ;
+    rdfs:label "FDIC Certificate Number"@en ;
+    fdic:columnName "CERT" ;
+    fdic:dataType "integer" ;
+    dcterms:description "Unique FDIC-assigned identifier for the institution" ;
+    rdfs:seeAlso <https://banks.data.fdic.gov/docs/>,
+        <https://spec.edmcouncil.org/fibo/ontology/FBC/hasRegistrationIdentifier>,
+        <https://www.fdic.gov/bank/individual/failed/banklist.html> .
+
+fdic:annotation_CITY a fdic:ColumnAnnotation ;
+    rdfs:label "City"@en ;
+    fdic:columnName "CITY" ;
+    fdic:dataType "string" ;
+    dcterms:description "City where the institution is located" ;
+    rdfs:seeAlso <http://www.geonames.org/ontology#name>,
+        schema:addressLocality,
+        <https://spec.edmcouncil.org/fibo/ontology/FND/Places/Addresses/hasCity>,
+        <https://www.geonames.org/> .
+
+fdic:annotation_NAME a fdic:ColumnAnnotation ;
+    rdfs:label "Institution Name"@en ;
+    fdic:columnName "NAME" ;
+    fdic:dataType "string" ;
+    dcterms:description "Legal name of financial institution" ;
+    rdfs:seeAlso <http://dbpedia.org/resource/Bank>,
+        <http://www.wikidata.org/entity/Q22687>,
+        foaf:name,
+        <https://en.wikipedia.org/wiki/Bank>,
+        schema:BankOrCreditUnion,
+        <https://spec.edmcouncil.org/fibo/ontology/BE/LegalEntities/LegalPersons/hasLegalName>,
+        <https://spec.edmcouncil.org/fibo/ontology/FBC/FinancialInstitution>,
+        <https://www.investopedia.com/terms/f/financialinstitution.asp> .
+
+fdic:annotation_STALP a fdic:ColumnAnnotation ;
+    rdfs:label "State Code"@en ;
+    fdic:columnName "STALP" ;
+    fdic:dataType "string" ;
+    dcterms:description "Two-letter state abbreviation" ;
+    rdfs:seeAlso <https://pe.usps.com/text/pub28/28apb.htm>,
+        <https://spec.edmcouncil.org/fibo/ontology/FND/Places/Addresses/hasSubdivision>,
+        <https://www.iso.org/standard/63545.html> .
+
+fdic:annotation_X a fdic:ColumnAnnotation ;
+    rdfs:label "Longitude"@en ;
+    fdic:columnName "X" ;
+    fdic:dataType "decimal" ;
+    dcterms:description "Geographic longitude coordinate" ;
+    rdfs:seeAlso geo:longitude,
+        <http://www.w3.org/2003/01/geo/wgs84_pos#long>,
+        <https://en.wikipedia.org/wiki/Longitude>,
+        <https://www.iso.org/standard/39242.html> .
+
+fdic:annotation_Y a fdic:ColumnAnnotation ;
+    rdfs:label "Latitude"@en ;
+    fdic:columnName "Y" ;
+    fdic:dataType "decimal" ;
+    dcterms:description "Geographic latitude coordinate" ;
+    rdfs:seeAlso geo:latitude,
+        <http://www.w3.org/2003/01/geo/wgs84_pos#lat>,
+        <https://en.wikipedia.org/wiki/Latitude>,
+        <https://www.iso.org/standard/39242.html> .
+
+fdic:annotation_ZIP a fdic:ColumnAnnotation ;
+    rdfs:label "ZIP Code"@en ;
+    fdic:columnName "ZIP" ;
+    fdic:dataType "string" ;
+    dcterms:description "5-digit postal code" ;
+    rdfs:seeAlso <http://www.w3.org/2006/vcard/ns#postal-code>,
+        <https://en.wikipedia.org/wiki/ZIP_Code>,
+        schema:postalCode,
+        <https://spec.edmcouncil.org/fibo/ontology/FND/Places/Addresses/hasPostalCode>,
+        <https://www.usps.com/nationalpremieraccounts/findzipcodes.htm> .
+
+[] a fdic:Cell ;
+    fdic:inColumn _:Ncedefdd776e5445a989f10ddea9f2cba ;
+    fdic:inRow _:N3c496f7dbda54d28a0408a4c39415953 ;
+    fdic:value "-87.6298" .
+
+[] a fdic:Cell ;
+    fdic:inColumn _:N040b0e9ad74b4f93aa028d41ec8a4245 ;
+    fdic:inRow _:N573faaa9805e4b8baad5fc1a600745ed ;
+    fdic:value "57" .
+
+[] a fdic:Cell ;
+    fdic:inColumn _:Ncedefdd776e5445a989f10ddea9f2cba ;
+    fdic:inRow _:N573faaa9805e4b8baad5fc1a600745ed ;
+    fdic:value "-89.6501" .
+
+[] a fdic:Cell ;
+    fdic:inColumn _:N040b0e9ad74b4f93aa028d41ec8a4245 ;
+    fdic:inRow _:N3c496f7dbda54d28a0408a4c39415953 ;
+    fdic:value "628" .
+
+[] a fdic:Cell ;
+    fdic:inColumn _:Nf44d567f3ae34ec2848b8f8ab18dae8b ;
+    fdic:inRow _:N3c496f7dbda54d28a0408a4c39415953 ;
+    fdic:value "41.8781" .
+
+[] a fdic:Cell ;
+    fdic:inColumn _:N5279d8dcfa35487981142fe79c150884 ;
+    fdic:inRow _:N3c496f7dbda54d28a0408a4c39415953 ;
+    fdic:value "Second State Bank" .
+
+[] a fdic:Cell ;
+    fdic:inColumn _:Nc6167d99e47845f9bd415a1ae1fd4b91 ;
+    fdic:inRow _:N573faaa9805e4b8baad5fc1a600745ed ;
+    fdic:value "62701" .
+
+[] a fdic:Cell ;
+    fdic:inColumn _:N21d91c1382ba44cc9eec21a95bfdc3eb ;
+    fdic:inRow _:N573faaa9805e4b8baad5fc1a600745ed ;
+    fdic:value "IL" .
+
+[] a fdic:Cell ;
+    fdic:inColumn _:N21d91c1382ba44cc9eec21a95bfdc3eb ;
+    fdic:inRow _:N3c496f7dbda54d28a0408a4c39415953 ;
+    fdic:value "IL" .
+
+[] a fdic:Cell ;
+    fdic:inColumn _:N0d004df6bbdb4e2898fde87786a95e19 ;
+    fdic:inRow _:N3c496f7dbda54d28a0408a4c39415953 ;
+    fdic:value "Chicago" .
+
+[] a fdic:Cell ;
+    fdic:inColumn _:N0d004df6bbdb4e2898fde87786a95e19 ;
+    fdic:inRow _:N573faaa9805e4b8baad5fc1a600745ed ;
+    fdic:value "Springfield" .
+
+[] a fdic:Cell ;
+    fdic:inColumn _:Nc6167d99e47845f9bd415a1ae1fd4b91 ;
+    fdic:inRow _:N3c496f7dbda54d28a0408a4c39415953 ;
+    fdic:value "60601" .
+
+[] a fdic:Cell ;
+    fdic:inColumn _:N5279d8dcfa35487981142fe79c150884 ;
+    fdic:inRow _:N573faaa9805e4b8baad5fc1a600745ed ;
+    fdic:value "First National Bank" .
+
+[] a fdic:Cell ;
+    fdic:inColumn _:N701fabfe2bc14e4ba8c94faf3210fb5f ;
+    fdic:inRow _:N573faaa9805e4b8baad5fc1a600745ed ;
+    fdic:value "123 Main St" .
+
+[] a fdic:Cell ;
+    fdic:inColumn _:N701fabfe2bc14e4ba8c94faf3210fb5f ;
+    fdic:inRow _:N3c496f7dbda54d28a0408a4c39415953 ;
+    fdic:value "456 Oak Ave" .
+
+[] a fdic:Cell ;
+    fdic:inColumn _:Nf44d567f3ae34ec2848b8f8ab18dae8b ;
+    fdic:inRow _:N573faaa9805e4b8baad5fc1a600745ed ;
+    fdic:value "39.7817" .
+
+_:N040b0e9ad74b4f93aa028d41ec8a4245 a fdic:Column ;
+    fdic:columnIndex 0 ;
+    fdic:columnName "CERT" ;
+    fdic:hasAnnotation fdic:annotation_CERT .
+
+_:N0d004df6bbdb4e2898fde87786a95e19 a fdic:Column ;
+    fdic:columnIndex 3 ;
+    fdic:columnName "CITY" ;
+    fdic:hasAnnotation fdic:annotation_CITY .
+
+_:N21d91c1382ba44cc9eec21a95bfdc3eb a fdic:Column ;
+    fdic:columnIndex 4 ;
+    fdic:columnName "STALP" ;
+    fdic:hasAnnotation fdic:annotation_STALP .
+
+_:N5279d8dcfa35487981142fe79c150884 a fdic:Column ;
+    fdic:columnIndex 1 ;
+    fdic:columnName "NAME" ;
+    fdic:hasAnnotation fdic:annotation_NAME .
+
+_:N701fabfe2bc14e4ba8c94faf3210fb5f a fdic:Column ;
+    fdic:columnIndex 2 ;
+    fdic:columnName "ADDRESS" ;
+    fdic:hasAnnotation fdic:annotation_ADDRESS .
+
+_:Nc6167d99e47845f9bd415a1ae1fd4b91 a fdic:Column ;
+    fdic:columnIndex 5 ;
+    fdic:columnName "ZIP" ;
+    fdic:hasAnnotation fdic:annotation_ZIP .
+
+_:Ncedefdd776e5445a989f10ddea9f2cba a fdic:Column ;
+    fdic:columnIndex 6 ;
+    fdic:columnName "X" ;
+    fdic:hasAnnotation fdic:annotation_X .
+
+_:Nf44d567f3ae34ec2848b8f8ab18dae8b a fdic:Column ;
+    fdic:columnIndex 7 ;
+    fdic:columnName "Y" ;
+    fdic:hasAnnotation fdic:annotation_Y .
+
+_:N3c496f7dbda54d28a0408a4c39415953 a fdic:Row ;
+    fdic:rowIndex 1 .
+
+_:N573faaa9805e4b8baad5fc1a600745ed a fdic:Row ;
+    fdic:rowIndex 0 .
+
