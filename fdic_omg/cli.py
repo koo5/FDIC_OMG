@@ -122,12 +122,12 @@ def cli(csv_file, output_dir, max_rows, no_report, no_viewer, rows_per_page, ser
         with socketserver.TCPServer(("", port), CustomHandler) as httpd:
             url = f"http://localhost:{port}"
             click.echo(f"Server running at: {url}")
-            click.echo(f"Viewer available at: {url}/index.html")
+            click.echo(f"Viewer available at: {url}/index-viewer.html")
             click.echo("Press Ctrl+C to stop the server")
             
             # Try to open browser
             try:
-                webbrowser.open(f"{url}/index.html")
+                webbrowser.open(f"{url}/index-viewer.html")
             except:
                 pass
             
@@ -140,7 +140,7 @@ def cli(csv_file, output_dir, max_rows, no_report, no_viewer, rows_per_page, ser
     elif not no_viewer and viewer_dir:
         click.echo(f"\nTo view the data:")
         click.echo(f"1. Start a web server: python -m http.server {port} -d {viewer_dir}")
-        click.echo(f"2. Open browser: http://localhost:{port}/index.html")
+        click.echo(f"2. Open browser: http://localhost:{port}/index-viewer.html")
 
 
 if __name__ == '__main__':
