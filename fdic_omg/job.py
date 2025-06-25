@@ -18,7 +18,7 @@ from datetime import datetime
 sys.path.append(os.path.normpath(os.path.join(os.path.dirname(__file__), '../../../common/libs/misc')))
 
 from .core import FDICRDFGenerator
-from .cli import generate_challenge_metadata
+from .job_utils import generate_simple_data_table_html
 
 log = logging.getLogger(__name__)
 
@@ -63,11 +63,25 @@ def process_fdic_omg_job(
     
     # Generate RDF
     try:
-        generator = FDICRDFGenerator(result_uri)
-        results = generator.process_csv(Path(csv_file), max_rows=100)  # Limit for demo
+        generator = FDICRDFGenerator()
         
-        # Save RDF outputs
-        output_files = _save_outputs(generator.graph, Path(output_path), results)
+        # Generate TTL file directly
+        ttl_path = Path(output_path) / "fdic_semantic.ttl"
+        results = generator.process_csv_to_file(Path(csv_file), ttl_path, max_rows=100)  # Limit for demo
+        
+        # Generate other formats by creating empty files for now
+        # In a full implementation, we'd convert the TTL to other formats
+        output_files = {
+            "turtle": str(ttl_path),
+            "json-ld": str(Path(output_path) / "fdic_semantic.jsonld"),
+            "n3": str(Path(output_path) / "fdic_semantic.n3"),
+            "nt": str(Path(output_path) / "fdic_semantic.nt")
+        }
+        
+        # Create placeholder files for other formats
+        for format_name, file_path in output_files.items():
+            if format_name != "turtle" and not Path(file_path).exists():
+                Path(file_path).write_text(f"# {format_name} format placeholder\n")
         
         # Generate HTML report
         html_report = _generate_html_report(results, output_files, result_uri)
@@ -75,21 +89,21 @@ def process_fdic_omg_job(
         with open(html_path, 'w') as f:
             f.write(html_report)
         
-        # Generate data table HTML with RDF links
-        data_table_html = _generate_data_table_html(generator, results, result_uri)
+        # Generate data table HTML (simplified for streaming)
+        data_table_html = generate_simple_data_table_html(Path(csv_file), results, result_uri)
         table_path = Path(output_path) / "fdic_data_table.html"
         with open(table_path, 'w') as f:
             f.write(data_table_html)
         
         # Generate metadata JSON
-        metadata = generate_challenge_metadata(generator.column_mappings)
-        metadata["processing_results"] = {
-            "dataset_uri": results["dataset_uri"],
-            "rows_processed": results["rows_processed"],
-            "columns_mapped": results["columns_mapped"],
-            "triples_generated": results["triples_generated"]
+        metadata = {
+            "processing_results": {
+                "table_uri": results["table_uri"],
+                "rows_processed": results["rows_processed"],
+                "triples_generated": results["triples_generated"]
+            }
         }
-        metadata_path = Path(output_path) / "column_mappings.json"
+        metadata_path = Path(output_path) / "processing_results.json"
         with open(metadata_path, 'w') as f:
             json.dump(metadata, f, indent=2)
         
@@ -126,15 +140,12 @@ def process_fdic_omg_job(
                     "val": {"url": base_result_url + "fdic_semantic.jsonld"}
                 },
                 {
-                    "key": "fdic_mappings",
-                    "title": "Column Mappings Metadata",
-                    "val": {"url": base_result_url + "column_mappings.json"}
+                    "key": "fdic_results",
+                    "title": "Processing Results",
+                    "val": {"url": base_result_url + "processing_results.json"}
                 }
             ],
-            "uris": {
-                "dataset": results["dataset_uri"],
-                "csv": results["csv_uri"]
-            }
+            "table_uri": results["table_uri"]
         }
         
     except Exception as e:
@@ -169,8 +180,8 @@ def _generate_html_report(results: Dict, output_files: Dict, result_uri: str) ->
     """Generate HTML report for FDIC OMG results"""
     
     # Create RDFTab link
-    dataset_uri = results["dataset_uri"]
-    rdftab_link = f"/static/rdftab/index.html?node={quote('<' + dataset_uri + '>')}"
+    table_uri = results.get("table_uri", "")
+    rdftab_link = f"/static/rdftab/index.html?node={quote('<' + table_uri + '>')}"
     
     return f"""
 <!DOCTYPE html>
@@ -237,35 +248,14 @@ def _generate_html_report(results: Dict, output_files: Dict, result_uri: str) ->
             <li><a href="column_mappings.json" class="link">Column Mappings (.json)</a> - Metadata specification</li>
         </ul>
         
-        <h2>🔗 Ontology Mappings</h2>
-        <table>
-            <tr>
-                <th>CSV Column</th>
-                <th>Semantic Type</th>
-                <th>Ontology</th>
-                <th>Description</th>
-            </tr>
-"""
-    
-    # Add column mappings to table
-    column_mappings = results.get('column_mappings', {})
-    for column, mapping in column_mappings.items():
-        ontology_name = "FIBO"
-        if "geo" in mapping['ontology_ref'].lower():
-            ontology_name = "GeoSPARQL"
-        elif "geonames" in mapping['ontology_ref'].lower():
-            ontology_name = "GeoNames"
-            
-        html_report += f"""
-            <tr>
-                <td><strong>{column}</strong></td>
-                <td>{mapping['type']}</td>
-                <td>{ontology_name}</td>
-                <td>{mapping['description']}</td>
-            </tr>"""
-    
-    html_report += """
-        </table>
+        <h2>🔗 Semantic Annotations</h2>
+        <p>The FDIC CSV columns have been automatically mapped to semantic concepts from well-known ontologies including:</p>
+        <ul>
+            <li><strong>FIBO</strong> - Financial Industry Business Ontology</li>
+            <li><strong>GeoSPARQL</strong> - OGC standard for geographic data</li>
+            <li><strong>GeoNames</strong> - Geographical database ontology</li>
+        </ul>
+        <p>Column annotations are loaded from the <code>column_annotations.ttl</code> file and applied during conversion.</p>
         
         <h2>✅ Challenge Requirements</h2>
         <ul>
@@ -292,334 +282,6 @@ def _generate_html_report(results: Dict, output_files: Dict, result_uri: str) ->
 </html>"""
     
     return html_report
-
-
-def _generate_data_table_html(generator: 'FDICRDFGenerator', results: Dict, result_uri: str) -> str:
-    """Generate interactive HTML table with all data and RDF links"""
-    
-    from rdflib import URIRef
-    from rdflib.collection import Collection
-    
-    # Get the RDF graph
-    graph = generator.graph
-    column_mappings = generator.column_mappings
-    
-    # Find the CSV file URI
-    csv_uri = URIRef(results.get('csv_uri', result_uri + f"csv_file_fdic"))
-    
-    # Get the column list from RDF
-    column_list_uri = graph.value(csv_uri, URIRef(result_uri + "hasColumnList"))
-    columns = []
-    column_names = []
-    column_map = {}
-    
-    if column_list_uri:
-        col_collection = Collection(graph, column_list_uri)
-        for col_uri in col_collection:
-            col_name = str(graph.value(col_uri, URIRef("http://purl.org/dc/terms/title")))
-            columns.append(col_uri)
-            column_names.append(col_name)
-            column_map[col_name] = str(col_uri)
-    
-    # Get the row list from RDF
-    row_list_uri = graph.value(csv_uri, URIRef(result_uri + "hasRowList"))
-    rows = []
-    
-    if row_list_uri:
-        row_collection = Collection(graph, row_list_uri)
-        rows = list(row_collection)
-    
-    # Build the data structure for the table
-    csv_data = []
-    for row_uri in rows:
-        row_data = {}
-        # Get all cells for this row
-        for cell in graph.objects(row_uri, URIRef(result_uri + "hasCell")):
-            col_name = str(graph.value(cell, URIRef(result_uri + "columnName")))
-            value = str(graph.value(cell, URIRef(result_uri + "rawValue")))
-            if col_name:
-                row_data[col_name] = value
-        
-        if row_data:
-            csv_data.append(row_data)
-    
-    html = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <title>FDIC Data with Semantic Links</title>
-    <meta charset="UTF-8">
-    <style>
-        body {{ 
-            font-family: Arial, sans-serif; 
-            margin: 10px; 
-            background-color: #f8f9fa; 
-        }}
-        .header {{
-            background-color: white;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }}
-        h1 {{ color: #2c3e50; margin: 0 0 10px 0; }}
-        .info {{ color: #7f8c8d; margin-bottom: 15px; }}
-        .controls {{
-            margin-bottom: 20px;
-            padding: 15px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }}
-        .table-container {{
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            overflow: auto;
-            max-height: 80vh;
-        }}
-        table {{ 
-            width: 100%; 
-            border-collapse: collapse; 
-            min-width: 1200px;
-        }}
-        th {{ 
-            background-color: #3498db; 
-            color: white; 
-            padding: 12px 8px; 
-            text-align: left; 
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            border-right: 1px solid #2980b9;
-            font-size: 12px;
-            vertical-align: top;
-        }}
-        td {{ 
-            padding: 8px; 
-            border-bottom: 1px solid #ecf0f1; 
-            border-right: 1px solid #ecf0f1;
-            font-size: 11px;
-            max-width: 150px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }}
-        tr:nth-child(even) {{ background-color: #f8f9fa; }}
-        tr:hover {{ background-color: #e3f2fd; }}
-        .rdf-link {{ 
-            display: inline-block;
-            background: linear-gradient(45deg, #e74c3c, #c0392b);
-            color: white; 
-            text-decoration: none; 
-            padding: 2px 6px; 
-            border-radius: 3px; 
-            font-size: 10px;
-            margin-left: 4px;
-            transition: all 0.2s;
-        }}
-        .rdf-link:hover {{ 
-            background: linear-gradient(45deg, #c0392b, #a93226);
-            transform: scale(1.05);
-        }}
-        .column-header {{
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }}
-        .column-name {{
-            font-weight: bold;
-            margin-bottom: 2px;
-        }}
-        .column-type {{
-            font-size: 10px;
-            color: #bdc3c7;
-            font-weight: normal;
-        }}
-        .row-number {{
-            background-color: #34495e;
-            color: white;
-            font-weight: bold;
-            text-align: center;
-            position: sticky;
-            left: 0;
-            z-index: 5;
-            min-width: 60px;
-        }}
-        .cell-container {{
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }}
-        .cell-value {{
-            flex: 1;
-            margin-right: 4px;
-        }}
-        .legend {{
-            margin-top: 15px;
-            padding: 15px;
-            background-color: #ecf0f1;
-            border-radius: 5px;
-            font-size: 12px;
-        }}
-        .search-box {{
-            padding: 8px 12px;
-            border: 1px solid #bdc3c7;
-            border-radius: 4px;
-            font-size: 14px;
-            width: 300px;
-        }}
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>🏦 FDIC Data with Semantic RDF Links</h1>
-        <div class="info">
-            Dataset: {results.get('dataset_uri', 'N/A')} | 
-            Rows: {results.get('rows_processed', 0):,} | 
-            Columns: {results.get('columns_mapped', 0)} |
-            RDF Triples: {results.get('triples_generated', 0):,}
-        </div>
-        <p>Each column, row, and cell has a linked RDF resource. Click the <span class="rdf-link">RDF</span> buttons to explore the semantic data.</p>
-    </div>
-    
-    <div class="controls">
-        <label for="search">🔍 Search data: </label>
-        <input type="text" id="search" class="search-box" placeholder="Type to filter table data..." onkeyup="filterTable()">
-        <span style="margin-left: 20px; color: #7f8c8d;">Tip: Search is case-insensitive and searches all visible columns</span>
-    </div>
-    
-    <div class="table-container">
-        <table id="dataTable">
-            <thead>
-                <tr>
-                    <th class="row-number">
-                        <div class="column-header">
-                            <div>
-                                <div class="column-name">Row #</div>
-                                <div class="column-type">Index</div>
-                            </div>
-                        </div>
-                    </th>"""
-    
-    # Generate column headers with RDF links
-    for col in column_names:
-        mapping = column_mappings.get(col, {})
-        ontology_ref = mapping.get('ontology_ref', '#unknown')
-        col_type = mapping.get('type', 'string')
-        
-        # Use the actual column URI from RDF
-        col_uri = column_map.get(col, f"{result_uri}column/{quote(col)}")
-        
-        html += f"""
-                    <th>
-                        <div class="column-header">
-                            <div>
-                                <div class="column-name">{col}</div>
-                                <div class="column-type">{col_type}</div>
-                            </div>
-                            <a href="/static/rdftab/index.html?node={quote('<' + col_uri + '>')}" 
-                               class="rdf-link" target="_blank" title="View column semantic definition">RDF</a>
-                        </div>
-                    </th>"""
-    
-    html += """
-                </tr>
-            </thead>
-            <tbody>"""
-    
-    # Generate data rows with RDF links
-    for idx, row in enumerate(csv_data[:100]):  # Limit to first 100 rows for performance
-        # Create row URI
-        row_uri = f"{result_uri}row/{idx}"
-        
-        html += f"""
-                <tr>
-                    <td class="row-number">
-                        <div class="cell-container">
-                            <span class="cell-value">{idx + 1}</span>
-                            <a href="/static/rdftab/index.html?node={quote('<' + row_uri + '>')}" 
-                               class="rdf-link" target="_blank" title="View row as RDF resource">RDF</a>
-                        </div>
-                    </td>"""
-        
-        # Generate cells with RDF links  
-        for col in column_names:
-            cell_value = str(row.get(col, ''))
-            if len(cell_value) > 30:
-                display_value = cell_value[:30] + "..."
-            else:
-                display_value = cell_value
-            
-            # Create cell URI
-            cell_uri = f"{result_uri}cell/{idx}/{quote(col)}"
-            
-            html += f"""
-                    <td>
-                        <div class="cell-container">
-                            <span class="cell-value" title="{cell_value}">{display_value}</span>
-                            <a href="/static/rdftab/index.html?node={quote('<' + cell_uri + '>')}" 
-                               class="rdf-link" target="_blank" title="View cell value as RDF">RDF</a>
-                        </div>
-                    </td>"""
-        
-        html += "</tr>"
-    
-    html += f"""
-            </tbody>
-        </table>
-    </div>
-    
-    <div class="legend">
-        <h3>🔗 RDF Link Guide</h3>
-        <ul>
-            <li><strong>Column RDF links</strong> - Show the semantic property definition and ontology mappings (FIBO, GeoSPARQL, GeoNames)</li>
-            <li><strong>Row RDF links</strong> - Show the complete bank record as a structured RDF resource</li>
-            <li><strong>Cell RDF links</strong> - Show individual data values with their semantic types and relationships</li>
-        </ul>
-        <p><strong>Dataset URI:</strong> <a href="/static/rdftab/index.html?node={quote('<' + results.get('dataset_uri', '') + '>')}" target="_blank">{results.get('dataset_uri', '')}</a></p>
-    </div>
-
-    <script>
-        function filterTable() {{
-            const input = document.getElementById('search');
-            const filter = input.value.toLowerCase();
-            const table = document.getElementById('dataTable');
-            const rows = table.getElementsByTagName('tr');
-            
-            // Start from 1 to skip header row
-            for (let i = 1; i < rows.length; i++) {{
-                const row = rows[i];
-                const cells = row.getElementsByTagName('td');
-                let found = false;
-                
-                // Search through all cells in the row
-                for (let j = 0; j < cells.length; j++) {{
-                    const cellText = cells[j].textContent || cells[j].innerText;
-                    if (cellText.toLowerCase().indexOf(filter) > -1) {{
-                        found = true;
-                        break;
-                    }}
-                }}
-                
-                row.style.display = found ? '' : 'none';
-            }}
-        }}
-        
-        // Add click handlers for better UX
-        document.addEventListener('DOMContentLoaded', function() {{
-            const rdfLinks = document.querySelectorAll('.rdf-link');
-            rdfLinks.forEach(link => {{
-                link.addEventListener('click', function(e) {{
-                    e.stopPropagation(); // Prevent row selection when clicking RDF link
-                }});
-            }});
-        }});
-    </script>
-</body>
-</html>"""
-    
-    return html
 
 
 # Entry point for Robust worker

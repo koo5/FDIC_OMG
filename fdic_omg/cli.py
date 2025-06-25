@@ -1,111 +1,60 @@
 #!/usr/bin/env python3
 """
-FDIC OMG CLI - Command line interface for FDIC semantic augmentation
-
-This module provides the Click-based CLI for the FDIC RDF generator.
+FDIC OMG CLI - Streamlined command line interface for FDIC RDF conversion
 """
 
-import json
 import logging
 from pathlib import Path
-
+from datetime import datetime
+import http.server
+import socketserver
+import threading
+import webbrowser
 import click
-
 from .core import FDICRDFGenerator
 
-
-def generate_fdic_rdf(csv_path: str, result_uri: str, max_rows: int = None):
-    """
-    Generate RDF from FDIC CSV file
-    
-    Args:
-        csv_path: Path to FDIC CSV file
-        result_uri: Base URI for the result dataset
-        max_rows: Maximum number of rows to process (None for all)
-        
-    Returns:
-        Processing results including RDF graph
-    """
-    generator = FDICRDFGenerator(result_uri)
-    return generator.process_csv(Path(csv_path), max_rows)
-
-
-def generate_challenge_metadata(column_mappings):
-    """Generate OMG Challenge metadata"""
-    return {
-        "schema_version": "1.0",
-        "challenge": "OMG Semantic Augmentation Challenge 2025",
-        "submission": {
-            "processor": "Accounts Assessor - Robust System",
-            "organization": "Lodgeit Labs"
-        },
-        "mappings": column_mappings,
-        "ontologies_used": [
-            {
-                "name": "FIBO",
-                "url": "https://github.com/edmcouncil/fibo",
-                "description": "Financial Industry Business Ontology",
-                "columns_mapped": ["NAME", "ADDRESS", "ZIP", "CERT", "BKCLASS", "SERVTYPE_DESC"]
-            },
-            {
-                "name": "GeoSPARQL", 
-                "url": "https://opengeospatial.github.io/ogc-geosparql/geosparql11/geo.html",
-                "description": "OGC GeoSPARQL geographic ontology",
-                "columns_mapped": ["X", "Y", "LONGITUDE", "LATITUDE"]
-            },
-            {
-                "name": "GeoNames",
-                "url": "https://www.geonames.org/ontology/documentation.html", 
-                "description": "GeoNames geographical database ontology",
-                "columns_mapped": ["CITY", "STALP", "STNAME"]
-            }
-        ],
-        "features": {
-            "machine_readable": True,
-            "repeatable_transformation": True,
-            "multiple_output_formats": True,
-            "provenance_tracking": True,
-            "dataset_versioning": True,
-            "scalable": True
-        }
-    }
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+log = logging.getLogger(__name__)
 
 
 @click.command()
 @click.argument('csv_file', type=click.Path(exists=True))
-@click.option('--result-uri', default='http://localhost/fdic/', help='Base URI for the result dataset')
-@click.option('--output', '-o', type=click.Path(), help='Output file for RDF')
-@click.option('--format', '-f', type=click.Choice(['turtle', 'n3', 'nt', 'json-ld', 'xml']), default='turtle', help='RDF output format')
+@click.option('--output-dir', '-d', type=click.Path(), help='Output directory (default: fdic_output_YYYYMMDD_HHMMSS)')
 @click.option('--max-rows', type=int, help='Maximum number of rows to process')
-@click.option('--mappings-only', is_flag=True, help='Only output column mappings as JSON')
-@click.option('--generate-viewer', type=click.Path(), help='Generate interactive web viewer in specified directory')
-@click.option('--rows-per-page', default=1000, help='Rows per page for viewer pagination (default: 1000)')
+@click.option('--no-report', is_flag=True, help='Skip generating HTML report')
+@click.option('--no-viewer', is_flag=True, help='Skip generating viewer data files')
+@click.option('--rows-per-page', default=1000, help='Rows per page for viewer (default: 1000)')
+@click.option('--server', is_flag=True, help='Start web server to serve the viewer')
+@click.option('--port', default=8000, help='Port for the web server (default: 8000)')
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose logging')
-def cli(csv_file, result_uri, output, format, max_rows, mappings_only, generate_viewer, rows_per_page, verbose):
+def cli(csv_file, output_dir, max_rows, no_report, no_viewer, rows_per_page, server, port, verbose):
     """
-    FDIC OMG Semantic Augmentation CLI
+    FDIC CSV to RDF Converter
     
-    Convert FDIC CSV files to RDF with semantic mappings for the OMG Challenge.
+    Convert FDIC CSV files to RDF with semantic annotations.
     
     Examples:
-    
-        # Generate RDF to file
-        python fdic_omg_cli.py data.csv -o output.ttl
+        # Basic usage (generates RDF, report, and viewer)
+        fdic-omg data.csv
         
-        # Generate JSON-LD with row limit
-        python fdic_omg_cli.py data.csv --format json-ld --max-rows 100
+        # Process and serve viewer
+        fdic-omg data.csv --server
         
-        # Generate interactive web viewer
-        python fdic_omg_cli.py data.csv --generate-viewer ./viewer_output
+        # Custom output directory
+        fdic-omg data.csv -d my_output
         
-        # Generate viewer with custom pagination
-        python fdic_omg_cli.py data.csv --generate-viewer ./viewer --rows-per-page 500
+        # Process limited rows
+        fdic-omg data.csv --max-rows 1000
         
-        # Output mappings metadata only
-        python fdic_omg_cli.py data.csv --mappings-only -o mappings.json
+        # Skip report and viewer
+        fdic-omg data.csv --no-report --no-viewer
         
-        # Generate to stdout with verbose logging
-        python fdic_omg_cli.py data.csv -v
+        # Custom pagination and port
+        fdic-omg data.csv --rows-per-page 500 --server --port 8080
     """
     # Configure logging
     logging.basicConfig(
@@ -113,58 +62,86 @@ def cli(csv_file, result_uri, output, format, max_rows, mappings_only, generate_
         format='%(levelname)s: %(message)s'
     )
     
-    if mappings_only:
-        # Just output the column mappings metadata
-        generator = FDICRDFGenerator(result_uri)
-        metadata = generate_challenge_metadata(generator.column_mappings)
-        
-        if output:
-            with open(output, 'w') as f:
-                json.dump(metadata, f, indent=2)
-            click.echo(f"✓ Mappings metadata written to {output}")
-        else:
-            click.echo(json.dumps(metadata, indent=2))
-        return
+    # Create output directory
+    if not output_dir:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_dir = Path(f"fdic_output_{timestamp}")
+    else:
+        output_dir = Path(output_dir)
+    
+    output_dir.mkdir(parents=True, exist_ok=True)
+    click.echo(f"Output directory: {output_dir}")
     
     # Initialize generator
-    generator = FDICRDFGenerator(result_uri)
-    
-    if generate_viewer:
-        # Generate interactive viewer
-        click.echo(f"Generating interactive viewer for {csv_file}...")
-        viewer_results = generator.generate_viewer_output(
-            Path(csv_file), 
-            Path(generate_viewer), 
-            rows_per_page
-        )
-        
-        click.echo(f"✓ Interactive viewer generated in {generate_viewer}")
-        click.echo(f"✓ Processed {viewer_results['total_rows']} rows in {viewer_results['total_pages']} pages")
-        click.echo(f"✓ Manifest file: {viewer_results['manifest_file']}")
-        click.echo(f"\nTo view the table:")
-        click.echo(f"1. Start a web server: python -m http.server 8000 -d {generate_viewer}")
-        click.echo(f"2. Open browser: http://localhost:8000?node=<{result_uri}dataset>")
-        return
+    generator = FDICRDFGenerator()
     
     # Generate RDF
     click.echo(f"Processing {csv_file}...")
-    results = generator.process_csv(Path(csv_file), max_rows)
+    rdf_path = output_dir / "output.ttl"
+    viewer_dir = output_dir / "viewer" if not no_viewer else None
+    results = generator.process_csv_to_file(Path(csv_file), rdf_path, max_rows, viewer_dir, rows_per_page)
+    click.echo(f"✓ RDF written to {rdf_path}")
     
-    # Output results
-    if output:
-        results["graph"].serialize(destination=output, format=format)
-        click.echo(f"✓ RDF written to {output} ({format} format)")
-    else:
-        # Print to stdout
-        click.echo(results["graph"].serialize(format=format))
+    # Generate HTML report if requested
+    if not no_report:
+        report_path = generator.generate_html_report(results, Path(csv_file).name, output_dir)
+        click.echo(f"✓ HTML report written to {report_path}")
     
-    # Print statistics to stderr so they don't interfere with RDF output
-    click.echo(f"\n--- OMG Challenge Statistics ---", err=True)
-    click.echo(f"✓ Generated {results['triples_generated']} RDF triples", err=True)
-    click.echo(f"✓ Processed {results['rows_processed']} CSV rows", err=True)
-    click.echo(f"✓ Mapped {results['columns_mapped']}/{len(results['column_mappings'])} columns to ontologies", err=True)
-    click.echo(f"✓ Dataset URI: {results['dataset_uri']}", err=True)
+    # Print statistics
+    click.echo(f"\n--- Summary ---")
+    click.echo(f"✓ Generated {results['triples_generated']:,} RDF triples")
+    click.echo(f"✓ Processed {results['rows_processed']:,} CSV rows")
+    click.echo(f"✓ Table URI: {results['table_uri']}")
+    if not no_viewer:
+        click.echo(f"✓ Generated {results['viewer_pages']} viewer pages")
+    click.echo(f"✓ All outputs in: {output_dir}")
+    
+    # List generated files
+    click.echo(f"\n--- Generated Files ---")
+    for item in sorted(output_dir.iterdir()):
+        if item.is_file():
+            size_mb = item.stat().st_size / (1024 * 1024)
+            click.echo(f"  • {item.name} ({size_mb:.2f} MB)")
+        elif item.is_dir() and item.name == "viewer":
+            # Count all viewer files recursively
+            viewer_files = list(item.rglob("*"))
+            file_count = sum(1 for f in viewer_files if f.is_file())
+            if file_count:
+                click.echo(f"  • {item.name}/ ({file_count} files)")
+    
+    # Start server if requested and viewer was generated
+    if server and not no_viewer and viewer_dir:
+        click.echo(f"\n--- Starting Web Server ---")
+        
+        # Create custom handler to serve from viewer directory
+        class CustomHandler(http.server.SimpleHTTPRequestHandler):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, directory=str(viewer_dir), **kwargs)
+        
+        # Start server
+        with socketserver.TCPServer(("", port), CustomHandler) as httpd:
+            url = f"http://localhost:{port}"
+            click.echo(f"Server running at: {url}")
+            click.echo(f"Viewer available at: {url}/index.html")
+            click.echo("Press Ctrl+C to stop the server")
+            
+            # Try to open browser
+            try:
+                webbrowser.open(f"{url}/index.html")
+            except:
+                pass
+            
+            try:
+                httpd.serve_forever()
+            except KeyboardInterrupt:
+                click.echo("\nShutting down server...")
+    elif server and no_viewer:
+        click.echo("\n⚠️  Cannot start server: viewer generation was disabled (--no-viewer)")
+    elif not no_viewer and viewer_dir:
+        click.echo(f"\nTo view the data:")
+        click.echo(f"1. Start a web server: python -m http.server {port} -d {viewer_dir}")
+        click.echo(f"2. Open browser: http://localhost:{port}/index.html")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     cli()

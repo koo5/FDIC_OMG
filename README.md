@@ -1,33 +1,25 @@
-# FDIC OMG Semantic Augmentation Challenge
+# FDIC RDF Converter
 
-This package implements a solution for the 2025 OMG Semantic Augmentation Challenge, specifically designed to process FDIC bank data CSV files and transform them to semantic RDF with ontology mappings.
+A simplified tool for converting FDIC CSV data to RDF format with semantic annotations.
 
 ## Overview
 
-The solution provides:
-- **Machine-readable metadata format** using JSON-LD
-- **Ontology mappings** to FIBO, GeoSPARQL, and GeoNames  
-- **Multiple output formats** (Turtle, JSON-LD, N3, N-Triples)
-- **Repeatable transformation** process
-- **Provenance tracking** with PROV-O
-- **Scalable processing** with configurable row limits
+This tool converts Federal Deposit Insurance Corporation (FDIC) CSV files containing bank information into RDF (Resource Description Framework) format using the Turtle serialization. It enriches the data with semantic annotations linking to established ontologies like FIBO, GeoSPARQL, and GeoNames.
 
-## Architecture
+## Features
 
-The package is split into three main components:
-
-1. **`core.py`** - Core RDF generation logic (framework-agnostic)
-2. **`cli.py`** - Command-line interface using Click
-3. **`job.py`** - Integration wrapper for the Robust worker system
+- **Simple RDF Structure**: Converts CSV to a clean RDF representation with Tables, Columns, Rows, and Cells
+- **Semantic Annotations**: Enriches columns with semantic metadata from external ontologies
+- **Automatic Output Organization**: Creates timestamped directories with all outputs by default
+- **HTML Reports**: Generates processing reports with statistics and annotation details  
+- **Interactive Viewer**: Creates a paginated web viewer for exploring the data
+- **Efficient Processing**: Handles large CSV files with configurable row limits
 
 ## Installation
 
 ```bash
 # Install in development mode
 pip install -e .
-
-# Or install dependencies only
-pip install rdflib click
 ```
 
 ## Usage
@@ -35,90 +27,123 @@ pip install rdflib click
 ### Command Line Interface
 
 ```bash
-# Basic usage
-python -m fdic_omg.cli data.csv -o output.ttl
+# Basic conversion (creates timestamped output directory)
+fdic-omg data.csv
+# Creates: fdic_output_20250623_143052/
+#   ├── output.ttl      # RDF data
+#   ├── report.html     # Processing report
+#   └── viewer/         # Interactive viewer files
 
-# Generate JSON-LD with row limit  
-python -m fdic_omg.cli data.csv --format json-ld --max-rows 100
+# Custom output directory
+fdic-omg data.csv -d my_output
 
-# Output mappings metadata only
-python -m fdic_omg.cli data.csv --mappings-only -o mappings.json
+# Process limited rows
+fdic-omg data.csv --max-rows 1000
 
-# Verbose output to stdout
-python -m fdic_omg.cli data.csv -v
+# Skip viewer or report generation
+fdic-omg data.csv --no-viewer --no-report
+
+# All options
+fdic-omg data.csv \
+  -d custom_output \
+  --max-rows 1000 \
+  --base-uri http://mycompany.com/fdic/ \
+  --rows-per-page 500 \
+  --no-viewer \
+  -v
 ```
 
-### Programmatic Usage
+### Python API
 
 ```python
-from fdic_omg import FDICRDFGenerator
+from fdic_omg.core import FDICRDFGenerator
 
-# Generate RDF from CSV
-generator = FDICRDFGenerator("http://example.com/result/")
-results = generator.process_csv("data.csv", max_rows=100)
+# Create generator
+generator = FDICRDFGenerator(base_uri="http://example.org/fdic/data#")
 
-# Access the RDF graph
-graph = results["graph"]
-graph.serialize("output.ttl", format="turtle")
+# Process CSV
+results = generator.process_csv(Path("data.csv"), max_rows=1000)
+
+# Save RDF
+results["graph"].serialize(destination="output.ttl", format="turtle")
+
+# Generate report
+generator.generate_html_report(Path("report.html"), "data.csv", results)
+
+# Generate viewer
+viewer_results = generator.generate_viewer_output(Path("viewer/"))
 ```
 
-### Robust Integration
+## RDF Structure
 
-The package integrates with the Robust worker system through `job.py`:
+The converter creates a simple RDF structure:
 
-```python
-from fdic_omg.job import process_fdic_omg_job
+- **Table**: The CSV file is represented as an `fdic:Table`
+- **Columns**: Each CSV column becomes an `fdic:Column` with name and index
+- **Rows**: Each CSV row becomes an `fdic:Row` with index
+- **Cells**: Non-empty cells become `fdic:Cell` objects linking to their row and column
 
-result = process_fdic_omg_job(
-    input_files=["data.csv"],
-    output_path="/tmp/output",
-    public_url="https://server.com",
-    result_tmp_directory_name="job123"
-)
+Column annotations are loaded from a separate TTL file and linked to columns by matching column names.
+
+## Column Annotations
+
+The system includes pre-defined annotations for common FDIC columns:
+
+- **CERT**: FDIC Certificate Number
+- **NAME**: Bank name (linked to FIBO Financial Institution)
+- **X/LONGITUDE**: Geographic coordinates (linked to GeoSPARQL)
+- **Y/LATITUDE**: Geographic coordinates (linked to GeoSPARQL)
+- **ADDRESS**: Street address (linked to FIBO address ontology)
+- **ZIP**: Postal code
+- And more...
+
+Each annotation includes:
+- Human-readable description
+- Data type (string, integer, decimal)
+- Links to external ontologies via `rdfs:seeAlso`
+
+## Output Structure
+
+By default, the tool creates a timestamped directory containing:
+
+```
+fdic_output_YYYYMMDD_HHMMSS/
+├── output.ttl          # RDF data in Turtle format
+├── report.html         # HTML report with statistics
+└── viewer/             # Interactive viewer
+    ├── manifest.json   # Viewer configuration
+    ├── page_0.json     # Paginated data
+    ├── page_1.json
+    └── ...
 ```
 
-## Challenge Requirements
+## Testing
 
-✅ **Machine-readable metadata format** - Uses JSON-LD with embedded ontology mappings  
-✅ **FIBO mappings** - Financial institution names, addresses, certificates, classifications  
-✅ **GeoSPARQL mappings** - Coordinates and geographic geometries  
-✅ **GeoNames mappings** - Cities, states, and location names  
-✅ **Repeatable transformation** - Consistent URI generation allows re-processing  
-✅ **Multiple output formats** - Turtle, JSON-LD, N3, N-Triples  
-✅ **Provenance tracking** - Full PROV-O metadata for dataset generation  
-✅ **Scalability** - Configurable row limits and streaming processing  
-
-## Output Files
-
-- **`fdic_semantic.ttl`** - Human-readable Turtle RDF
-- **`fdic_semantic.jsonld`** - JSON-LD with linked data context  
-- **`fdic_semantic.n3`** - Notation3 RDF format
-- **`fdic_semantic.nt`** - N-Triples line-based format
-- **`column_mappings.json`** - Complete metadata specification
-- **`fdic_omg_report.html`** - Interactive HTML report with RDF browser links
-
-## Ontology Mappings
-
-The system maps FDIC CSV columns to standard ontologies:
-
-| Column | Ontology | Mapping |
-|--------|----------|---------|
-| NAME | FIBO | Financial organization legal name |
-| ADDRESS, CITY, ZIP | FIBO | Physical address components |
-| CERT | FIBO | Corporate identifier |
-| LONGITUDE, LATITUDE | GeoSPARQL | Geographic coordinates |
-| STALP, STNAME | GeoNames | State codes and names |
-
-## Development
+Run the comprehensive test suite:
 
 ```bash
-# Install development dependencies
-pip install -e ".[dev]"
+# Run all tests
+pytest tests/ -v
 
-# Run tests
-pytest
-
-# Format code
-black .
-isort .
+# Run with coverage
+pytest tests/ --cov=fdic_omg --cov-report=html
 ```
+
+## Architecture
+
+The simplified architecture consists of:
+
+1. **`core.py`** - Main RDF generation logic
+2. **`cli.py`** - Command-line interface
+3. **`annotations/column_annotations.ttl`** - Semantic metadata for columns
+4. **`job.py`** - Integration with Robust worker system (optional)
+
+## Requirements
+
+- Python 3.8+
+- rdflib >= 7.0.0
+- click >= 8.1.0
+
+## License
+
+Part of the Accounts Assessor (Robust) system by Lodgeit Labs.

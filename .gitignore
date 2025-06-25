@@ -3,3 +3,5 @@ fdic_omg.egg-info/
 __pycache__/
 venv
 ./fdic_omg.egg-info
+viewer_template/
+fdic_output_*

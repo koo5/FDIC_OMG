@@ -1,495 +1,419 @@
-#!/usr/bin/env python3
 """
-FDIC RDF Core - Core semantic augmentation logic
-
-This module contains the core transformation logic for converting FDIC CSV data 
-to RDF with ontology mappings, without any CLI or framework dependencies.
+Streaming FDIC CSV to RDF converter that outputs RDF text directly
+without building an in-memory graph.
 """
-
 import csv
-import json
-import math
-import shutil
 import logging
-from pathlib import Path
-from typing import Dict, List, Any, Optional
 from datetime import datetime
+from pathlib import Path
+from typing import Optional, TextIO, Dict, Any, List
+from urllib.parse import quote
+import json
 
-import rdflib
-from rdflib import Graph, URIRef, Literal, Namespace, BNode
-from rdflib.namespace import RDF, RDFS, XSD, FOAF, DCTERMS
-from rdflib.collection import Collection
-
-# Setup logging
 log = logging.getLogger(__name__)
-
-# Define namespaces
-FIBO = Namespace("https://spec.edmcouncil.org/fibo/ontology/")
-GEO = Namespace("http://www.opengis.net/ont/geosparql#")
-GEONAMES = Namespace("http://www.geonames.org/ontology#")
-PROV = Namespace("http://www.w3.org/ns/prov#")
-DCAT = Namespace("http://www.w3.org/ns/dcat#")
 
 
 class FDICRDFGenerator:
-    """Core RDF generation logic for FDIC CSV files"""
+    """Streaming RDF generator that outputs Turtle format directly"""
     
-    def __init__(self, result_uri: str):
-        self.result_uri = result_uri
-        self.graph = Graph()
-        self._bind_namespaces()
-        self.column_mappings = self._load_column_mappings()
-        
-    def _bind_namespaces(self):
-        """Bind common namespaces to the RDF graph"""
-        self.graph.bind("fibo", FIBO)
-        self.graph.bind("geo", GEO)
-        self.graph.bind("geonames", GEONAMES)
-        self.graph.bind("prov", PROV)
-        self.graph.bind("dcat", DCAT)
-        self.graph.bind("foaf", FOAF)
-        self.graph.bind("dcterms", DCTERMS)
-        
-    def _load_column_mappings(self) -> Dict[str, Dict]:
-        """Load semantic mappings for FDIC CSV columns from TTL file"""
-        mappings = {}
-        
-        # Load the TTL file
-        mappings_file = Path(__file__).parent / "mappings" / "column_mappings.ttl"
-        if not mappings_file.exists():
-            log.error(f"Column mappings file not found: {mappings_file}")
-            return {}
-            
-        mapping_graph = Graph()
-        mapping_graph.parse(mappings_file, format="turtle")
-        
-        # Define namespace for FDIC mappings
-        FDIC_NS = Namespace("http://example.org/fdic/ontology#")
-        
-        # Query for all column mappings
-        query = """
-        PREFIX fdic: <http://example.org/fdic/ontology#>
-        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-        PREFIX dcterms: <http://purl.org/dc/terms/>
-        
-        SELECT ?column ?columnName ?semanticType ?dataType ?description ?seeAlso
-        WHERE {
-            ?column a fdic:ColumnMapping ;
-                    fdic:columnName ?columnName ;
-                    fdic:semanticType ?semanticType ;
-                    fdic:dataType ?dataType .
-            OPTIONAL { ?column dcterms:description ?description }
-            OPTIONAL { ?column rdfs:seeAlso ?seeAlso }
+    def __init__(self):
+        self.base_uri = "https://fdic.example.org/data/"
+        self.prefixes = {
+            "fdic": "https://fdic.example.org/ontology#",
+            "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+            "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+            "xsd": "http://www.w3.org/2001/XMLSchema#",
+            "dcterms": "http://purl.org/dc/terms/",
+            "fibo-fbc-fct-usrga": "https://spec.edmcouncil.org/fibo/ontology/FBC/FunctionalEntities/RegistrationAuthorities/",
+            "fibo-be-corp-corp": "https://spec.edmcouncil.org/fibo/ontology/BE/Corporations/Corporations/",
+            "fibo-fbc-fi-fi": "https://spec.edmcouncil.org/fibo/ontology/FBC/FinancialInstruments/FinancialInstruments/",
+            "fibo-fnd-plc-adr": "https://spec.edmcouncil.org/fibo/ontology/FND/Places/Addresses/",
+            "fibo-fnd-plc-loc": "https://spec.edmcouncil.org/fibo/ontology/FND/Places/Locations/",
+            "gn": "http://www.geonames.org/ontology#",
+            "geosparql": "http://www.opengis.net/ont/geosparql#"
         }
-        """
+        self.annotations = None
+        self._load_annotations()
         
-        results = mapping_graph.query(query)
-        for row in results:
-            column_name = str(row.columnName)
-            mappings[column_name] = {
-                "type": str(row.semanticType),
-                "data_type": str(row.dataType),
-                "description": str(row.description) if row.description else "",
-                "ontology_ref": str(row.seeAlso) if row.seeAlso else ""
-            }
-        
-        log.info(f"Loaded {len(mappings)} column mappings from {mappings_file}")
-        return mappings
+    def _load_annotations(self):
+        """Load column annotations from TTL file"""
+        annotations_file = Path(__file__).parent / "annotations" / "column_annotations.ttl"
+        if annotations_file.exists():
+            # Parse annotations file to extract column mappings
+            self.annotations = {}
+            with open(annotations_file, 'r', encoding='utf-8') as f:
+                current_annotation = None
+                current_column_name = None
+                for line in f:
+                    line = line.strip()
+                    if line.startswith('fdic:') and 'a fdic:ColumnAnnotation' in line:
+                        # Extract annotation ID
+                        current_annotation = line.split()[0]
+                    elif current_annotation and 'fdic:columnName' in line:
+                        # Extract column name
+                        start = line.find('"') + 1
+                        end = line.rfind('"')
+                        if start > 0 and end > start:
+                            current_column_name = line[start:end]
+                            self.annotations[current_column_name] = current_annotation
+                            current_annotation = None
+                            current_column_name = None
     
-    def process_csv(self, csv_path: Path, max_rows: Optional[int] = None) -> Dict[str, Any]:
-        """Process FDIC CSV file and generate RDF"""
-        log.info(f"Processing FDIC CSV: {csv_path}")
-        
-        dataset_uri = URIRef(self.result_uri + "dataset")
-        csv_file_uri = URIRef(self.result_uri + f"csv_file_{csv_path.stem}")
-        
-        self._add_dataset_metadata(dataset_uri, csv_file_uri, csv_path)
-        results = self._process_csv_data(csv_path, csv_file_uri, max_rows)
-        
-        return {
-            "dataset_uri": str(dataset_uri),
-            "csv_uri": str(csv_file_uri), 
-            "rows_processed": results["rows_processed"],
-            "columns_mapped": results["columns_mapped"],
-            "triples_generated": len(self.graph),
-            "graph": self.graph,
-            "column_mappings": self.column_mappings
-        }
+    def _write_prefixes(self, output: TextIO):
+        """Write Turtle prefixes"""
+        for prefix, uri in self.prefixes.items():
+            output.write(f"@prefix {prefix}: <{uri}> .\n")
+        output.write("\n")
     
-    def _add_dataset_metadata(self, dataset_uri: URIRef, csv_uri: URIRef, csv_path: Path):
-        """Add dataset-level metadata to RDF graph"""
-        self.graph.add((dataset_uri, RDF.type, DCAT.Dataset))
-        self.graph.add((dataset_uri, DCTERMS.title, Literal("FDIC Insured Banks Dataset")))
-        self.graph.add((dataset_uri, DCTERMS.description, 
-                       Literal("Dataset containing information about FDIC-insured banks in the United States")))
-        self.graph.add((dataset_uri, DCTERMS.source, Literal("Federal Deposit Insurance Corporation (FDIC)")))
-        self.graph.add((dataset_uri, DCTERMS.created, Literal(datetime.now().isoformat(), datatype=XSD.dateTime)))
-        
-        # CSV file metadata  
-        self.graph.add((csv_uri, RDF.type, DCAT.Distribution))
-        self.graph.add((csv_uri, DCTERMS.title, Literal(f"CSV File: {csv_path.name}")))
-        self.graph.add((csv_uri, DCAT.mediaType, Literal("text/csv")))
-        self.graph.add((dataset_uri, DCAT.distribution, csv_uri))
-        
-        # Provenance
-        activity_uri = URIRef(self.result_uri + "semantic_augmentation")
-        self.graph.add((activity_uri, RDF.type, PROV.Activity))
-        self.graph.add((activity_uri, PROV.startedAtTime, Literal(datetime.now().isoformat(), datatype=XSD.dateTime)))
-        self.graph.add((activity_uri, PROV.used, csv_uri))
-        self.graph.add((dataset_uri, PROV.wasGeneratedBy, activity_uri))
-        
-    def _process_csv_data(self, csv_path: Path, csv_uri: URIRef, max_rows: Optional[int]) -> Dict[str, int]:
-        """Process CSV rows and add semantic annotations"""
+    def _escape_literal(self, value: str) -> str:
+        """Escape special characters in literals"""
+        return value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
+    
+    def _make_uri(self, *parts) -> str:
+        """Create a URI from parts"""
+        return self.base_uri + "/".join(quote(str(p), safe='') for p in parts)
+    
+    def process_csv_streaming(self, csv_path: Path, output: TextIO, max_rows: Optional[int] = None, 
+                            viewer_dir: Optional[Path] = None, rows_per_page: int = 1000) -> Dict[str, Any]:
+        """Process CSV and stream RDF output directly, optionally generating viewer data"""
         rows_processed = 0
-        columns_found = set()
+        triples_count = 0
+        
+        # Viewer data collection
+        viewer_data = []
+        current_page = 0
+        
+        # Write prefixes
+        self._write_prefixes(output)
+        
+        # Table URI
+        table_uri = self._make_uri("table", csv_path.stem)
+        
+        # Write table metadata
+        output.write(f"<{table_uri}> a fdic:Table ;\n")
+        output.write(f'    dcterms:title "FDIC Table: {csv_path.name}" ;\n')
+        output.write(f'    dcterms:created "{datetime.now().isoformat()}"^^xsd:dateTime .\n\n')
+        triples_count += 3
+        
+        # Count total rows if needed
+        total_rows = None
+        if max_rows:
+            with open(csv_path, 'r', encoding='utf-8-sig') as f:
+                total_rows = sum(1 for line in f) - 1
+                if total_rows > max_rows:
+                    log.info(f"CSV has {total_rows:,} rows, processing first {max_rows:,} rows")
+                else:
+                    log.info(f"CSV has {total_rows:,} rows, processing all rows")
         
         with open(csv_path, 'r', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile)
             headers = reader.fieldnames
             
-            # Create ordered list of columns
-            column_list = []
-            column_uris = {}
-            for i, header in enumerate(headers):
-                column_uri = URIRef(self.result_uri + f"column_{i}_{header}")
-                self._add_column_metadata(column_uri, csv_uri, header, i)
-                columns_found.add(header)
-                column_list.append(column_uri)
-                column_uris[header] = column_uri
+            # If viewer requested, write table metadata to separate file
+            if viewer_dir:
+                metadata_path = viewer_dir / "table_metadata.ttl"
+                with open(metadata_path, 'w', encoding='utf-8') as metadata_file:
+                    # Write prefixes
+                    metadata_file.write("# Table and Column Metadata\n")
+                    for prefix, uri in self.prefixes.items():
+                        metadata_file.write(f"@prefix {prefix}: <{uri}> .\n")
+                    metadata_file.write('\n')
+                    
+                    # Write table metadata
+                    metadata_file.write(f"<{table_uri}> a fdic:Table ;\n")
+                    metadata_file.write(f'    dcterms:title "FDIC Table: {csv_path.name}" ;\n')
+                    metadata_file.write(f'    dcterms:created "{datetime.now().isoformat()}"^^xsd:dateTime .\n\n')
+                    
+                    # Write column definitions with annotations
+                    metadata_file.write("# Column definitions\n")
+                    for col_idx, header in enumerate(headers):
+                        column_uri = self._make_uri("column", csv_path.stem, str(col_idx))
+                        metadata_file.write(f"<{column_uri}> a fdic:Column ;\n")
+                        metadata_file.write(f'    fdic:columnName "{self._escape_literal(header)}" ;\n')
+                        metadata_file.write(f'    fdic:columnIndex {col_idx} .\n')
+                        
+                        # Add annotation if available
+                        if self.annotations and header in self.annotations:
+                            metadata_file.write(f"<{column_uri}> fdic:hasAnnotation {self.annotations[header]} .\n")
+                        
+                        metadata_file.write(f"<{table_uri}> fdic:hasColumn <{column_uri}> .\n\n")
+                    
+                    # Copy the full annotation definitions from the annotations file
+                    annotations_file = Path(__file__).parent / "annotations" / "column_annotations.ttl"
+                    if annotations_file.exists():
+                        metadata_file.write("\n# Column Annotation Definitions\n")
+                        with open(annotations_file, 'r', encoding='utf-8') as ann_file:
+                            # Skip the prefix lines (they're already included)
+                            content = ann_file.read()
+                            # Find where the actual annotations start
+                            start_marker = "# Simple column annotations"
+                            if start_marker in content:
+                                ann_start = content.find(start_marker)
+                                metadata_file.write(content[ann_start:])
+                            else:
+                                # Just skip lines starting with @ (prefixes)
+                                for line in content.split('\n'):
+                                    if not line.strip().startswith('@') and line.strip():
+                                        metadata_file.write(line + '\n')
             
-            # Create RDF list for columns
-            columns_collection = Collection(self.graph, BNode())
-            for col_uri in column_list:
-                columns_collection.append(col_uri)
-            self.graph.add((csv_uri, URIRef(self.result_uri + "hasColumnList"), columns_collection.uri))
+            # Write column definitions to main output (basic info only)
+            output.write("# Column definitions\n")
+            for col_idx, header in enumerate(headers):
+                column_uri = self._make_uri("column", csv_path.stem, str(col_idx))
+                output.write(f"<{column_uri}> a fdic:Column ;\n")
+                output.write(f'    fdic:columnName "{self._escape_literal(header)}" ;\n')
+                output.write(f'    fdic:columnIndex {col_idx} .\n')
+                triples_count += 3
+                
+                output.write(f"<{table_uri}> fdic:hasColumn <{column_uri}> .\n\n")
+                triples_count += 1
             
-            # Create ordered list of rows
-            row_list = []
+            # Process rows
+            output.write("# Data rows\n")
             for row_idx, row in enumerate(reader):
-                row_uri = URIRef(self.result_uri + f"row_{row_idx}")
-                self._add_row_metadata(row_uri, csv_uri, row, row_idx, column_uris)
-                row_list.append(row_uri)
+                row_uri = self._make_uri("row", csv_path.stem, str(row_idx))
+                
+                # Write row
+                output.write(f"<{row_uri}> a fdic:Row ;\n")
+                output.write(f"    fdic:rowIndex {row_idx} .\n")
+                output.write(f"<{table_uri}> fdic:hasRow <{row_uri}> .\n")
+                triples_count += 3
+                
+                # Collect viewer data if requested
+                if viewer_dir:
+                    viewer_row = {
+                        "row_index": row_idx,
+                        "row_uri": row_uri,
+                        "cells": {},
+                        "cell_uris": {},
+                        "cell_rdf": {}
+                    }
+                    for col_idx, header in enumerate(headers):
+                        value = row.get(header, "")
+                        if value and value.strip():
+                            viewer_row["cells"][header] = value
+                            # Add cell URI and RDF data
+                            cell_uri = self._make_uri("cell", csv_path.stem, str(row_idx), str(col_idx))
+                            column_uri = self._make_uri("column", csv_path.stem, str(col_idx))
+                            viewer_row["cell_uris"][header] = cell_uri
+                            viewer_row["cell_rdf"][header] = {
+                                "uri": cell_uri,
+                                "type": "fdic:Cell",
+                                "value": value,
+                                "inRow": row_uri,
+                                "inColumn": column_uri,
+                                "columnName": header
+                            }
+                    viewer_data.append(viewer_row)
+                    
+                    # Write page when buffer is full
+                    if len(viewer_data) >= rows_per_page:
+                        self._write_viewer_page(viewer_dir, current_page, viewer_data)
+                        viewer_data = []
+                        current_page += 1
+                
+                # Write cells for non-empty values
+                has_cells = False
+                for col_idx, header in enumerate(headers):
+                    value = row.get(header, "")
+                    if value and value.strip():
+                        cell_uri = self._make_uri("cell", csv_path.stem, str(row_idx), str(col_idx))
+                        column_uri = self._make_uri("column", csv_path.stem, str(col_idx))
+                        
+                        output.write(f"<{cell_uri}> a fdic:Cell ;\n")
+                        output.write(f'    fdic:value "{self._escape_literal(value)}" ;\n')
+                        output.write(f"    fdic:inRow <{row_uri}> ;\n")
+                        output.write(f"    fdic:inColumn <{column_uri}> .\n")
+                        triples_count += 4
+                        has_cells = True
+                
+                if has_cells:
+                    output.write("\n")
+                
                 rows_processed += 1
                 
-                if max_rows and rows_processed >= max_rows:
-                    log.info(f"Limiting processing to first {rows_processed} rows")
-                    break
-            
-            # Create RDF list for rows
-            rows_collection = Collection(self.graph, BNode())
-            for row_uri in row_list:
-                rows_collection.append(row_uri)
-            self.graph.add((csv_uri, URIRef(self.result_uri + "hasRowList"), rows_collection.uri))
-        
-        mapped_columns = len([h for h in headers if h in self.column_mappings])
-        return {"rows_processed": rows_processed, "columns_mapped": mapped_columns}
-    
-    def _add_column_metadata(self, column_uri: URIRef, csv_uri: URIRef, header: str, index: int):
-        """Add semantic metadata for a CSV column"""
-        column_class = URIRef(self.result_uri + "Column")
-        self.graph.add((column_uri, RDF.type, column_class))
-        self.graph.add((column_uri, DCTERMS.title, Literal(header)))
-        self.graph.add((column_uri, URIRef(self.result_uri + "columnIndex"), Literal(index, datatype=XSD.integer)))
-        self.graph.add((csv_uri, URIRef(self.result_uri + "hasColumn"), column_uri))
-        
-        # Add ontology mapping if available
-        if header in self.column_mappings:
-            mapping = self.column_mappings[header]
-            self.graph.add((column_uri, RDFS.seeAlso, URIRef(mapping["ontology_ref"])))
-            self.graph.add((column_uri, DCTERMS.description, Literal(mapping["description"])))
-            self.graph.add((column_uri, URIRef(self.result_uri + "dataType"), Literal(mapping["data_type"])))
-            self.graph.add((column_uri, URIRef(self.result_uri + "semanticType"), Literal(mapping["type"])))
-    
-    def _add_row_metadata(self, row_uri: URIRef, csv_uri: URIRef, row: Dict, index: int, column_uris: Dict[str, URIRef]):
-        """Add semantic metadata for a CSV row"""
-        bank_record_class = URIRef(self.result_uri + "BankRecord")
-        self.graph.add((row_uri, RDF.type, bank_record_class))
-        self.graph.add((row_uri, URIRef(self.result_uri + "rowIndex"), Literal(index, datatype=XSD.integer)))
-        self.graph.add((csv_uri, URIRef(self.result_uri + "hasRow"), row_uri))
-        
-        # Create ordered list of cells matching column order
-        cell_list = []
-        for column, value in row.items():
-            if column in column_uris:
-                cell_uri = URIRef(self.result_uri + f"cell_{index}_{column}")
-                cell_list.append((column, cell_uri, value))
-                if value and value.strip():
-                    self._add_cell_metadata(cell_uri, row_uri, column, value)
-                else:
-                    # Add empty cell
-                    cell_class = URIRef(self.result_uri + "Cell")
-                    self.graph.add((cell_uri, RDF.type, cell_class))
-                    self.graph.add((cell_uri, URIRef(self.result_uri + "columnName"), Literal(column)))
-                    self.graph.add((cell_uri, URIRef(self.result_uri + "rawValue"), Literal("")))
-                    self.graph.add((row_uri, URIRef(self.result_uri + "hasCell"), cell_uri))
-    
-    def _add_cell_metadata(self, cell_uri: URIRef, row_uri: URIRef, column: str, value: str):
-        """Add semantic metadata for individual cell values"""
-        cell_class = URIRef(self.result_uri + "Cell")
-        self.graph.add((cell_uri, RDF.type, cell_class))
-        self.graph.add((cell_uri, URIRef(self.result_uri + "columnName"), Literal(column)))
-        self.graph.add((cell_uri, URIRef(self.result_uri + "rawValue"), Literal(value)))
-        self.graph.add((row_uri, URIRef(self.result_uri + "hasCell"), cell_uri))
-        
-        # Apply semantic typing based on column mappings
-        if column in self.column_mappings:
-            mapping = self.column_mappings[column]
-            typed_value = self._convert_value_type(value, mapping["data_type"])
-            if typed_value is not None:
-                self.graph.add((cell_uri, URIRef(self.result_uri + "typedValue"), typed_value))
+                # Log progress
+                if rows_processed % 1000 == 0:
+                    if max_rows:
+                        remaining = max_rows - rows_processed
+                        log.info(f"Processed {rows_processed:,} rows, {remaining:,} remaining")
+                    else:
+                        log.info(f"Processed {rows_processed:,} rows")
                 
-            # Add specific semantic properties
-            if mapping["type"] == "coordinate" and column in ["X", "LONGITUDE"]:
-                self.graph.add((cell_uri, GEO.longitude, typed_value))
-            elif mapping["type"] == "coordinate" and column in ["Y", "LATITUDE"]:
-                self.graph.add((cell_uri, GEO.latitude, typed_value))
-            elif mapping["type"] == "bank_name":
-                self.graph.add((cell_uri, FOAF.name, Literal(value)))
-    
-    def _convert_value_type(self, value: str, data_type: str) -> Optional[Literal]:
-        """Convert string value to appropriate RDF literal type"""
-        try:
-            if data_type == "decimal":
-                return Literal(float(value), datatype=XSD.decimal)
-            elif data_type == "integer":
-                return Literal(int(value), datatype=XSD.integer)
-            else:
-                return Literal(value, datatype=XSD.string)
-        except ValueError:
-            log.warning(f"Could not convert '{value}' to {data_type}")
-            return None
-    
-    def generate_viewer_output(self, csv_path: Path, output_dir: Path, rows_per_page: int = 1000) -> Dict[str, Any]:
-        """Generate standalone tabular data viewer with pagination"""
-        log.info(f"Generating viewer output for {csv_path} in {output_dir}")
+                if max_rows and rows_processed >= max_rows:
+                    log.info(f"Reached limit of {rows_processed:,} rows")
+                    break
         
-        # Create output directory
-        output_dir.mkdir(parents=True, exist_ok=True)
+        # Write annotations at the end if they exist
+        if self.annotations:
+            output.write("\n# Column Annotations (loaded from column_annotations.ttl)\n")
+            annotations_file = Path(__file__).parent / "annotations" / "column_annotations.ttl"
+            if annotations_file.exists():
+                with open(annotations_file, 'r', encoding='utf-8') as f:
+                    # Skip prefix lines
+                    for line in f:
+                        if not line.strip().startswith('@prefix') and line.strip():
+                            output.write(line)
         
-        # Copy pre-built Vue app files
-        rdftab_build_dir = Path(__file__).parent.parent.parent.parent.parent / "static" / "rdftab"
-        if rdftab_build_dir.exists():
-            # Copy all built files
-            for item in rdftab_build_dir.rglob("*"):
+        # Write final viewer page if there's remaining data
+        if viewer_dir and viewer_data:
+            self._write_viewer_page(viewer_dir, current_page, viewer_data)
+            current_page += 1
+        
+        # Generate manifest if viewer was requested
+        total_pages = current_page if viewer_dir else 0
+        if viewer_dir:
+            # Build column RDF data for viewer
+            column_rdf = {}
+            for col_idx, header in enumerate(headers):
+                column_uri = self._make_uri("column", csv_path.stem, str(col_idx))
+                column_rdf[header] = {
+                    "uri": column_uri,
+                    "type": "fdic:Column",
+                    "columnName": header,
+                    "columnIndex": col_idx
+                }
+                if self.annotations and header in self.annotations:
+                    column_rdf[header]["hasAnnotation"] = self.annotations[header]
+            
+            self._write_viewer_manifest(viewer_dir, {
+                "dataset_uri": table_uri,
+                "rdf_type": ["http://www.w3.org/ns/csvw#Table"],
+                "title": f"FDIC Table: {csv_path.name}",
+                "headers": headers,
+                "total_rows": rows_processed,
+                "rows_per_page": rows_per_page,
+                "total_pages": total_pages,
+                "annotations": self.annotations if self.annotations else {},
+                "column_rdf": column_rdf
+            })
+        
+        log.info(f"Completed processing {rows_processed:,} rows")
+        
+        return {
+            "table_uri": table_uri,
+            "rows_processed": rows_processed,
+            "triples_generated": triples_count,
+            "viewer_pages": total_pages
+        }
+    
+    def process_csv_to_file(self, csv_path: Path, output_path: Path, max_rows: Optional[int] = None,
+                          viewer_dir: Optional[Path] = None, rows_per_page: int = 1000) -> Dict[str, Any]:
+        """Process CSV and write RDF to file"""
+        if viewer_dir:
+            viewer_dir.mkdir(parents=True, exist_ok=True)
+        with open(output_path, 'w', encoding='utf-8') as output:
+            return self.process_csv_streaming(csv_path, output, max_rows, viewer_dir, rows_per_page)
+    
+    
+    def generate_html_report(self, results: Dict[str, Any], csv_name: str, output_path: Path) -> Path:
+        """Generate HTML report for conversion results"""
+        html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FDIC RDF Conversion Report</title>
+    <style>
+        body {{ font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }}
+        .container {{ max-width: 1200px; margin: 0 auto; background-color: white; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }}
+        h1 {{ color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }}
+        h2 {{ color: #34495e; margin-top: 30px; }}
+        .success {{ background-color: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin: 10px 0; }}
+        .metadata {{ background-color: #f8f9fa; padding: 15px; margin: 15px 0; border-left: 4px solid #3498db; }}
+        .stats {{ display: flex; justify-content: space-around; margin: 20px 0; }}
+        .stat-box {{ text-align: center; padding: 20px; background-color: #ecf0f1; border-radius: 5px; }}
+        .stat-number {{ font-size: 36px; color: #3498db; font-weight: bold; }}
+        .stat-label {{ color: #7f8c8d; margin-top: 5px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>FDIC RDF Conversion Report</h1>
+        
+        <div class="success">
+            <strong>✅ Success!</strong> FDIC CSV has been successfully converted to RDF using streaming processing
+        </div>
+        
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-number">{results.get('triples_generated', 0):,}</div>
+                <div class="stat-label">RDF Triples</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">{results.get('rows_processed', 0):,}</div>
+                <div class="stat-label">Rows Processed</div>
+            </div>
+        </div>
+        
+        <div class="metadata">
+            <h2>Dataset Information</h2>
+            <p><strong>Source File:</strong> {csv_name}</p>
+            <p><strong>Table URI:</strong> {results.get('table_uri', 'N/A')}</p>
+            <p><strong>Generated:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <p><strong>Processing Method:</strong> Streaming (memory-efficient)</p>
+        </div>
+        
+        <h2>📥 Output</h2>
+        <p>The RDF output has been generated in Turtle format (.ttl) using streaming processing for improved performance and memory efficiency.</p>
+    </div>
+</body>
+</html>
+"""
+        
+        report_path = output_path / "report.html"
+        with open(report_path, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        
+        return report_path
+    
+    def _write_viewer_page(self, viewer_dir: Path, page_num: int, rows: List[Dict]) -> None:
+        """Write a page of viewer data to JSON file"""
+        page_data = {
+            "page": page_num,
+            "start_row": rows[0]["row_index"] if rows else 0,
+            "end_row": rows[-1]["row_index"] if rows else 0,
+            "rows": rows
+        }
+        
+        page_path = viewer_dir / f"page_{page_num}.json"
+        with open(page_path, 'w', encoding='utf-8') as f:
+            json.dump(page_data, f, indent=2)
+    
+    def _write_viewer_manifest(self, viewer_dir: Path, metadata: Dict) -> None:
+        """Write viewer manifest file"""
+        import shutil
+        
+        # Copy RDFtab viewer template files
+        viewer_template_dir = Path(__file__).parent / "viewer_template"
+        if viewer_template_dir.exists():
+            # Copy all files from template
+            for item in viewer_template_dir.rglob('*'):
                 if item.is_file():
-                    rel_path = item.relative_to(rdftab_build_dir)
-                    dest_path = output_dir / rel_path
+                    rel_path = item.relative_to(viewer_template_dir)
+                    dest_path = viewer_dir / rel_path
                     dest_path.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(item, dest_path)
         else:
-            log.warning(f"RDFtab build directory not found: {rdftab_build_dir}")
-        
-        # Process CSV and generate data files
-        with open(csv_path, 'r', encoding='utf-8-sig') as csvfile:
-            reader = csv.DictReader(csvfile)
-            headers = list(reader.fieldnames)
-            rows = list(reader)
-        
-        total_rows = len(rows)
-        total_pages = math.ceil(total_rows / rows_per_page)
-        
-        # Generate manifest
-        manifest = {
-            "dataset_uri": self.result_uri + "dataset",
-            "title": f"FDIC Dataset: {csv_path.name}",
-            "description": "FDIC-Insured Institutions Dataset with semantic annotations",
-            "total_rows": total_rows,
-            "rows_per_page": rows_per_page,
-            "total_pages": total_pages,
-            "headers": headers,
-            "column_mappings": self._get_column_mappings_for_viewer()
-        }
+            # Fallback to old location
+            rdftab_build_dir = Path(__file__).parent.parent.parent.parent.parent / "static" / "rdftab-sfc"
+            if rdftab_build_dir.exists():
+                for item in rdftab_build_dir.rglob('*'):
+                    if item.is_file():
+                        rel_path = item.relative_to(rdftab_build_dir)
+                        if item.name == 'index-sfc.html':
+                            dest_path = viewer_dir / 'index.html'
+                        else:
+                            dest_path = viewer_dir / rel_path
+                        dest_path.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(item, dest_path)
         
         # Write manifest
-        with open(output_dir / "manifest.json", 'w') as f:
-            json.dump(manifest, f, indent=2)
+        manifest_path = viewer_dir / "manifest.json"
+        with open(manifest_path, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=2)
         
-        # Generate paginated data and cell metadata
-        for page_num in range(total_pages):
-            start_idx = page_num * rows_per_page
-            end_idx = min(start_idx + rows_per_page, total_rows)
-            
-            # Generate page data (simplified array format for efficiency)
-            page_data = {
-                "page": page_num,
-                "start_row": start_idx,
-                "end_row": end_idx - 1,
-                "rows": []
-            }
-            
-            # Generate cell metadata
-            cells_data = {}
-            
-            for i in range(start_idx, end_idx):
-                row = rows[i]
-                row_index = i
-                
-                # Add row data as array (more compact)
-                page_data["rows"].append([row.get(col, "") for col in headers])
-                
-                # Generate cell metadata for non-empty cells
-                for col_idx, col in enumerate(headers):
-                    value = row.get(col, "")
-                    if value and value.strip():
-                        cell_key = f"row_{row_index}/col_{col}"
-                        cells_data[cell_key] = self._generate_cell_metadata(row_index, col, value, col_idx)
-            
-            # Write page data
-            with open(output_dir / f"page_{page_num}.json", 'w') as f:
-                json.dump(page_data, f, indent=2)
-            
-            # Write cell metadata
-            with open(output_dir / f"cells_{page_num}.json", 'w') as f:
-                json.dump(cells_data, f, indent=2)
-        
-        log.info(f"Generated viewer with {total_pages} pages in {output_dir}")
-        return {
-            "output_dir": str(output_dir),
-            "total_rows": total_rows,
-            "total_pages": total_pages,
-            "manifest_file": str(output_dir / "manifest.json")
-        }
+        # Also copy the TTL file to viewer directory for RDFtab access
+        ttl_source = viewer_dir.parent / "output.ttl"
+        if ttl_source.exists():
+            shutil.copy2(ttl_source, viewer_dir / "data.ttl")
     
-    def _get_column_mappings_for_viewer(self) -> Dict[str, Dict]:
-        """Get simplified column mappings for the viewer"""
-        viewer_mappings = {}
-        for col, mapping in self.column_mappings.items():
-            viewer_mappings[col] = {
-                "label": col.replace("_", " ").title(),
-                "description": mapping.get("description", ""),
-                "dataType": mapping.get("data_type", "string"),
-                "semanticType": mapping.get("type", ""),
-                "ontologyRef": mapping.get("ontology_ref", ""),
-                "seeAlso": [mapping.get("ontology_ref")] if mapping.get("ontology_ref") else []
-            }
-        return viewer_mappings
-    
-    def _generate_cell_metadata(self, row_index: int, column: str, value: str, col_index: int) -> Dict[str, Any]:
-        """Generate metadata for a specific cell"""
-        cell_uri = f"{self.result_uri}#row_{row_index}/col_{column}"
-        
-        # Get column mapping if available
-        mapping = self.column_mappings.get(column, {})
-        
-        # Generate basic cell metadata
-        metadata = {
-            "uri": cell_uri,
-            "value": value,
-            "row_index": row_index,
-            "column_name": column,
-            "column_index": col_index,
-            "data_type": mapping.get("data_type", "string")
-        }
-        
-        # Add typed value if possible
-        typed_value = self._convert_value_type(value, mapping.get("data_type", "string"))
-        if typed_value is not None:
-            if mapping.get("data_type") == "decimal":
-                metadata["typed_value"] = float(value)
-            elif mapping.get("data_type") == "integer":
-                metadata["typed_value"] = int(value)
-            else:
-                metadata["typed_value"] = value
-        
-        # Add semantic information
-        if mapping:
-            metadata["semantic_type"] = mapping.get("type", "")
-            metadata["description"] = mapping.get("description", "")
-            metadata["ontology_ref"] = mapping.get("ontology_ref", "")
-        
-        # Add external links based on column type and value
-        metadata["links"] = self._generate_external_links(column, value, mapping)
-        
-        # Add properties specific to the column type
-        metadata["properties"] = self._generate_cell_properties(column, value, mapping)
-        
-        return metadata
-    
-    def _generate_external_links(self, column: str, value: str, mapping: Dict) -> List[Dict[str, str]]:
-        """Generate external links for a cell based on its type and value"""
-        links = []
-        
-        # Add ontology reference link
-        if mapping.get("ontology_ref"):
-            links.append({
-                "url": mapping["ontology_ref"],
-                "label": "Ontology Reference",
-                "type": "ontology"
-            })
-        
-        # Add specific links based on column type
-        if column == "CERT" and value.isdigit():
-            links.append({
-                "url": f"https://www.fdic.gov/bank/individual/failed/cert/{value}.html",
-                "label": "FDIC Bank Profile",
-                "type": "external_data"
-            })
-        
-        elif column in ["NAME"]:
-            links.append({
-                "url": f"https://en.wikipedia.org/wiki/{value.replace(' ', '_')}",
-                "label": "Wikipedia",
-                "type": "reference"
-            })
-        
-        elif column in ["CITY", "STNAME"]:
-            links.append({
-                "url": f"https://www.geonames.org/search.html?q={value.replace(' ', '+')}",
-                "label": "GeoNames",
-                "type": "geographic"
-            })
-        
-        return links
-    
-    def _generate_cell_properties(self, column: str, value: str, mapping: Dict) -> Dict[str, Any]:
-        """Generate additional properties for a cell"""
-        properties = {}
-        
-        # Add validation status
-        properties["is_valid"] = self._validate_cell_value(column, value, mapping)
-        
-        # Add column-specific properties
-        if column == "CERT":
-            properties["issuer"] = "Federal Deposit Insurance Corporation"
-            properties["identifier_type"] = "FDIC Certificate Number"
-        
-        elif column in ["LONGITUDE", "X"]:
-            try:
-                lon = float(value)
-                properties["coordinate_type"] = "longitude"
-                properties["hemisphere"] = "East" if lon >= 0 else "West"
-                properties["decimal_degrees"] = lon
-            except ValueError:
-                pass
-        
-        elif column in ["LATITUDE", "Y"]:
-            try:
-                lat = float(value)
-                properties["coordinate_type"] = "latitude"
-                properties["hemisphere"] = "North" if lat >= 0 else "South"
-                properties["decimal_degrees"] = lat
-            except ValueError:
-                pass
-        
-        elif column == "ZIP":
-            properties["postal_system"] = "United States Postal Service"
-            properties["format"] = "5-digit ZIP code"
-        
-        return properties
-    
-    def _validate_cell_value(self, column: str, value: str, mapping: Dict) -> bool:
-        """Validate a cell value against its expected type and constraints"""
-        if not value or not value.strip():
-            return False
-        
-        data_type = mapping.get("data_type", "string")
-        
-        try:
-            if data_type == "integer":
-                int(value)
-            elif data_type == "decimal":
-                float(value)
-            # String values are always valid if not empty
-            return True
-        except ValueError:
-            return False
