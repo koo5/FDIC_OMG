@@ -17,7 +17,7 @@ from datetime import datetime
 # Add paths for Robust imports
 sys.path.append(os.path.normpath(os.path.join(os.path.dirname(__file__), '../../../common/libs/misc')))
 
-from .core import FDICRDFGenerator
+from .csv2rdf import CSV2RDF
 from .job_utils import generate_simple_data_table_html
 
 log = logging.getLogger(__name__)
@@ -61,27 +61,35 @@ def process_fdic_omg_job(
     # Construct result URI from public URL and result directory
     result_uri = f"{public_url}/rdf/results/{result_tmp_directory_name}/"
     
-    # Generate RDF
+    # Generate RDF using new converter
     try:
-        generator = FDICRDFGenerator()
+        converter = CSV2RDF(Path(output_path))
         
-        # Generate TTL file directly
-        ttl_path = Path(output_path) / "fdic_semantic.ttl"
-        results = generator.process_csv_to_file(Path(csv_file), ttl_path, max_rows=100)  # Limit for demo
+        # Process CSV to generate RDF with cells
+        table_uri = converter.process_csv(Path(csv_file), max_rows=100)  # Limit for demo
         
-        # Generate other formats by creating empty files for now
-        # In a full implementation, we'd convert the TTL to other formats
-        output_files = {
-            "turtle": str(ttl_path),
-            "json-ld": str(Path(output_path) / "fdic_semantic.jsonld"),
-            "n3": str(Path(output_path) / "fdic_semantic.n3"),
-            "nt": str(Path(output_path) / "fdic_semantic.nt")
+        # Get processing results
+        manifest_path = converter.output_dir / "table_manifest.json"
+        with open(manifest_path, 'r') as f:
+            manifest = json.load(f)
+            
+        results = {
+            "table_uri": manifest["table_uri"],
+            "rows_processed": manifest["row_count"],
+            "triples_generated": manifest.get("triple_count", manifest["row_count"] * 50),  # Estimate
+            "columns_mapped": len(manifest.get("columns", []))
         }
         
-        # Create placeholder files for other formats
-        for format_name, file_path in output_files.items():
-            if format_name != "turtle" and not Path(file_path).exists():
-                Path(file_path).write_text(f"# {format_name} format placeholder\n")
+        # Primary TTL file is table.ttl
+        ttl_path = converter.output_dir / "table.ttl"
+        
+        # Use generated files
+        output_files = {
+            "turtle": str(ttl_path),
+            "full": str(converter.output_dir / "full.ttl"),
+            "manifest": str(manifest_path),
+            "viewer": str(converter.output_dir / "viewer" / "index-viewer.html")
+        }
         
         # Generate HTML report
         html_report = _generate_html_report(results, output_files, result_uri)
@@ -89,11 +97,12 @@ def process_fdic_omg_job(
         with open(html_path, 'w') as f:
             f.write(html_report)
         
-        # Generate data table HTML (simplified for streaming)
-        data_table_html = generate_simple_data_table_html(Path(csv_file), results, result_uri)
-        table_path = Path(output_path) / "fdic_data_table.html"
-        with open(table_path, 'w') as f:
-            f.write(data_table_html)
+        # Copy viewer files to output
+        import shutil
+        viewer_src = converter.output_dir / "viewer"
+        viewer_dst = Path(output_path) / "viewer"
+        if viewer_src.exists() and not viewer_dst.exists():
+            shutil.copytree(viewer_src, viewer_dst)
         
         # Generate metadata JSON
         metadata = {
@@ -125,9 +134,9 @@ def process_fdic_omg_job(
                     "val": {"url": base_result_url + "fdic_omg_report.html"}
                 },
                 {
-                    "key": "fdic_data_table",
-                    "title": "Interactive Data Table with RDF Links",
-                    "val": {"url": base_result_url + "fdic_data_table.html"}
+                    "key": "fdic_rdftab_viewer",
+                    "title": "Interactive RDF Table Viewer",
+                    "val": {"url": base_result_url + "viewer/index-viewer.html"}
                 },
                 {
                     "key": "fdic_turtle",
@@ -135,9 +144,14 @@ def process_fdic_omg_job(
                     "val": {"url": base_result_url + "fdic_semantic.ttl"}
                 },
                 {
-                    "key": "fdic_jsonld",
-                    "title": "JSON-LD Format",
-                    "val": {"url": base_result_url + "fdic_semantic.jsonld"}
+                    "key": "fdic_full",
+                    "title": "Full RDF Dataset",
+                    "val": {"url": base_result_url + "full.ttl"}
+                },
+                {
+                    "key": "fdic_manifest",
+                    "title": "Dataset Manifest",
+                    "val": {"url": base_result_url + "table_manifest.json"}
                 },
                 {
                     "key": "fdic_results",
@@ -179,9 +193,10 @@ def _save_outputs(graph, output_dir: Path, results: Dict) -> Dict[str, str]:
 def _generate_html_report(results: Dict, output_files: Dict, result_uri: str) -> str:
     """Generate HTML report for FDIC OMG results"""
     
-    # Create RDFTab link
+    # Create links
     table_uri = results.get("table_uri", "")
     rdftab_link = f"/static/rdftab/index.html?node={quote('<' + table_uri + '>')}"
+    viewer_link = "viewer/index-viewer.html"
     
     return f"""
 <!DOCTYPE html>
@@ -226,26 +241,26 @@ def _generate_html_report(results: Dict, output_files: Dict, result_uri: str) ->
                 <div class="stat-label">Rows Processed</div>
             </div>
             <div class="stat-box">
-                <div class="stat-number">{results['columns_mapped']}</div>
+                <div class="stat-number">{results.get('columns_mapped', 0)}</div>
                 <div class="stat-label">Columns Mapped</div>
             </div>
         </div>
         
         <div class="metadata">
             <h2>Dataset Information</h2>
-            <p><strong>Dataset URI:</strong> <a href="{rdftab_link}" class="link">{dataset_uri}</a></p>
+            <p><strong>Table URI:</strong> <a href="{rdftab_link}" class="link">{table_uri}</a></p>
             <p><strong>Result URI:</strong> {result_uri}</p>
             <p><strong>Generated:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
             <p><strong>View in RDF Browser:</strong> <a href="{rdftab_link}" target="_blank" class="link">Open in RDFTab</a></p>
+            <p><strong>Interactive Table Viewer:</strong> <a href="{viewer_link}" target="_blank" class="link">Open Table Viewer</a></p>
         </div>
         
-        <h2>📥 Download Formats</h2>
+        <h2>📥 Generated Files</h2>
         <ul>
-            <li><a href="fdic_semantic.ttl" class="link">Turtle (.ttl)</a> - Human-readable RDF format</li>
-            <li><a href="fdic_semantic.jsonld" class="link">JSON-LD (.jsonld)</a> - JSON with linked data context</li>
-            <li><a href="fdic_semantic.n3" class="link">Notation3 (.n3)</a> - N3 RDF format</li>
-            <li><a href="fdic_semantic.nt" class="link">N-Triples (.nt)</a> - Line-based RDF format</li>
-            <li><a href="column_mappings.json" class="link">Column Mappings (.json)</a> - Metadata specification</li>
+            <li><a href="table.ttl" class="link">Table Metadata (.ttl)</a> - Table structure and column annotations</li>
+            <li><a href="full.ttl" class="link">Full Dataset (.ttl)</a> - Complete RDF data with cells</li>
+            <li><a href="table_manifest.json" class="link">Manifest (.json)</a> - Dataset manifest with file listings</li>
+            <li><a href="viewer/index-viewer.html" class="link">Interactive Viewer</a> - Browse data with cell navigation</li>
         </ul>
         
         <h2>🔗 Semantic Annotations</h2>
@@ -255,7 +270,8 @@ def _generate_html_report(results: Dict, output_files: Dict, result_uri: str) ->
             <li><strong>GeoSPARQL</strong> - OGC standard for geographic data</li>
             <li><strong>GeoNames</strong> - Geographical database ontology</li>
         </ul>
-        <p>Column annotations are loaded from the <code>column_annotations.ttl</code> file and applied during conversion.</p>
+        <p>Column annotations are loaded from the <code>fdic_banks.ttl</code> file and applied during conversion.</p>
+        <p>The new converter creates <strong>cell URIs</strong> that link rows and columns, enabling precise navigation through the data.</p>
         
         <h2>✅ Challenge Requirements</h2>
         <ul>

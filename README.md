@@ -1,15 +1,16 @@
 # FDIC RDF Converter
 
-A simplified tool for converting FDIC CSV data to RDF format with semantic annotations.
+A tool for converting FDIC CSV data to RDF format with semantic annotations.
 
 ## Overview
 
-This tool converts Federal Deposit Insurance Corporation (FDIC) CSV files containing bank information into RDF (Resource Description Framework) format using the Turtle serialization. It enriches the data with semantic annotations linking to established ontologies like FIBO, GeoSPARQL, and GeoNames.
+This tool converts CSV files into RDF. It merges the generated RDF with the data found in provided annotations file, and performs a simple linking of generated column data with annotation objects based on column name.
+
 
 ## Features
 
 - **Simple RDF Structure**: Converts CSV to a clean RDF representation with Tables, Columns, Rows, and Cells
-- **Semantic Annotations**: Enriches columns with semantic metadata from external ontologies
+- **Semantic Annotations**: Enriches columns with provided semantic metadata
 - **Automatic Output Organization**: Creates timestamped directories with all outputs by default
 - **HTML Reports**: Generates processing reports with statistics and annotation details  
 - **Interactive Viewer**: Creates a paginated web viewer for exploring the data
@@ -28,7 +29,7 @@ pip install -e .
 
 ```bash
 # Basic conversion (creates timestamped output directory)
-fdic-omg data.csv
+csv2rdf example/example1.csv
 # Creates: fdic_output_20250623_143052/
 #   ├── output.ttl      # RDF data
 #   ├── report.html     # Processing report

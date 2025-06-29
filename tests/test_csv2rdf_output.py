@@ -118,12 +118,12 @@ class TestCsv2RdfOutput:
         ONT = Namespace("https://example.org/ontology#")
         RDFS = Namespace("http://www.w3.org/2000/01/rdf-schema#")
         
-        # Find annotation objects (they are ColumnMapping instances)
+        # Find annotation objects (they are ColumnAnnotation instances)
         FDIC = Namespace("http://example.org/fdic/ontology#")
         
-        # Find all ColumnMapping instances
+        # Find all ColumnAnnotation instances
         mappings = list(g.subjects(predicate=URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"), 
-                                  object=FDIC.ColumnMapping))
+                                  object=FDIC.ColumnAnnotation))
         
         annotation_found = len(mappings) > 0
         seealso_found = False

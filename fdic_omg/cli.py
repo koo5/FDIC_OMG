@@ -12,6 +12,7 @@ import threading
 import webbrowser
 import click
 from .core import FDICRDFGenerator
+from .annotation_converter import AnnotationConverter
 
 # Configure logging
 logging.basicConfig(
@@ -21,7 +22,18 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
-@click.command()
+@click.group()
+def cli():
+    """
+    FDIC OMG - CSV to RDF Converter with Semantic Annotations
+    
+    A tool for converting CSV files to RDF with rich semantic annotations.
+    Supports YAML/TTL annotation formats and interactive data viewers.
+    """
+    pass
+
+
+@cli.command()
 @click.argument('csv_file', type=click.Path(exists=True))
 @click.option('--output-dir', '-d', type=click.Path(), help='Output directory (default: fdic_output_YYYYMMDD_HHMMSS)')
 @click.option('--max-rows', type=int, help='Maximum number of rows to process')
@@ -31,7 +43,7 @@ log = logging.getLogger(__name__)
 @click.option('--server', is_flag=True, help='Start web server to serve the viewer')
 @click.option('--port', default=8000, help='Port for the web server (default: 8000)')
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose logging')
-def cli(csv_file, output_dir, max_rows, no_report, no_viewer, rows_per_page, server, port, verbose):
+def convert(csv_file, output_dir, max_rows, no_report, no_viewer, rows_per_page, server, port, verbose):
     """
     FDIC CSV to RDF Converter
     
@@ -141,6 +153,56 @@ def cli(csv_file, output_dir, max_rows, no_report, no_viewer, rows_per_page, ser
         click.echo(f"\nTo view the data:")
         click.echo(f"1. Start a web server: python -m http.server {port} -d {viewer_dir}")
         click.echo(f"2. Open browser: http://localhost:{port}/index-viewer.html")
+
+
+@cli.command('yaml-to-ttl')
+@click.argument('yaml_file', type=click.Path(exists=True))
+@click.argument('ttl_file', type=click.Path())
+@click.option('--base-uri', default='http://example.org/csv2rdf/',
+              help='Base URI for annotations (default: http://example.org/csv2rdf/)')
+def yaml_to_ttl(yaml_file, ttl_file, base_uri):
+    """
+    Convert YAML annotations to TTL format
+    
+    Examples:
+        # Convert column annotations from YAML to TTL
+        fdic-omg yaml-to-ttl annotations/columns.yaml annotations/columns.ttl
+        
+        # With custom base URI
+        fdic-omg yaml-to-ttl annotations/columns.yaml annotations/columns.ttl --base-uri http://myorg.com/csv/
+    """
+    converter = AnnotationConverter(base_uri=base_uri)
+    try:
+        converter.yaml_to_ttl(Path(yaml_file), Path(ttl_file))
+        click.echo(f"✓ Successfully converted {yaml_file} to {ttl_file}")
+    except Exception as e:
+        click.echo(f"✗ Error: {e}", err=True)
+        raise click.Exit(1)
+
+
+@cli.command('ttl-to-yaml')
+@click.argument('ttl_file', type=click.Path(exists=True))
+@click.argument('yaml_file', type=click.Path())
+@click.option('--base-uri', default='http://example.org/csv2rdf/',
+              help='Base URI for annotations (default: http://example.org/csv2rdf/)')
+def ttl_to_yaml(ttl_file, yaml_file, base_uri):
+    """
+    Convert TTL annotations to YAML format
+    
+    Examples:
+        # Convert column annotations from TTL to YAML
+        fdic-omg ttl-to-yaml annotations/columns.ttl annotations/columns.yaml
+        
+        # With custom base URI
+        fdic-omg ttl-to-yaml annotations/columns.ttl annotations/columns.yaml --base-uri http://myorg.com/csv/
+    """
+    converter = AnnotationConverter(base_uri=base_uri)
+    try:
+        converter.ttl_to_yaml(Path(ttl_file), Path(yaml_file))
+        click.echo(f"✓ Successfully converted {ttl_file} to {yaml_file}")
+    except Exception as e:
+        click.echo(f"✗ Error: {e}", err=True)
+        raise click.Exit(1)
 
 
 if __name__ == '__main__':

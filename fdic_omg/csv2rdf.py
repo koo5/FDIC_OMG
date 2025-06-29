@@ -107,7 +107,7 @@ class CSV2RDF:
         table_name = csv_path.stem
         
         # Read CSV headers
-        with open(csv_path, 'r', encoding='utf-8') as f:
+        with open(csv_path, 'r', encoding='utf-8-sig') as f:
             reader = csv.DictReader(f)
             headers = reader.fieldnames
             
@@ -133,7 +133,7 @@ class CSV2RDF:
         # Add comment to separate metadata from rows
         full_file.write("\n# CSV Row Data\n")
         
-        with open(csv_path, 'r', encoding='utf-8') as csvfile:
+        with open(csv_path, 'r', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile)
             row_count = 0
             

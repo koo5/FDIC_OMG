@@ -1,3 +1,5 @@
+@prefix csv2rdf: <http://example.org/csv2rdf/> .
+@prefix fdic: <http://example.org/fdic/> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
@@ -16,19 +18,17 @@
 @prefix wgs84: <http://www.w3.org/2003/01/geo/wgs84_pos#> .
 @prefix vcard: <http://www.w3.org/2006/vcard/ns#> .
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
-@prefix fdic: <http://example.org/fdic/ontology#> .
 @prefix wikidata: <http://www.wikidata.org/entity/> .
 @prefix dbpedia: <http://dbpedia.org/resource/> .
 
 
 
 # X Coordinate Column
-fdic:column_X a fdic:ColumnMapping ;
-    fdic:columnName "X" ;
+fdic:column_X a csv2rdf:ColumnAnnotation ;
+    csv2rdf:columnName "X" ;
     rdfs:label "X Coordinate"@en ;
     dcterms:description "Longitude coordinate in decimal degrees" ;
-    fdic:semanticType "coordinate" ;
-    fdic:dataType "decimal" ;
+    csv2rdf:dataType xsd:decimal ;
     rdfs:seeAlso geo:hasGeometry ,
                   wgs84:long ,
                   schema:longitude ,
@@ -38,12 +38,11 @@ fdic:column_X a fdic:ColumnMapping ;
     dcterms:references <https://www.w3.org/2003/01/geo/wgs84_pos#> .
 
 # Y Coordinate Column
-fdic:column_Y a fdic:ColumnMapping ;
-    fdic:columnName "Y" ;
+fdic:column_Y a csv2rdf:ColumnAnnotation ;
+    csv2rdf:columnName "Y" ;
     rdfs:label "Y Coordinate"@en ;
     dcterms:description "Latitude coordinate in decimal degrees" ;
-    fdic:semanticType "coordinate" ;
-    fdic:dataType "decimal" ;
+    csv2rdf:dataType xsd:decimal ;
     rdfs:seeAlso geo:hasGeometry ,
                   wgs84:lat ,
                   schema:latitude ,
@@ -53,32 +52,29 @@ fdic:column_Y a fdic:ColumnMapping ;
     dcterms:references <https://www.w3.org/2003/01/geo/wgs84_pos#> .
 
 # Longitude Column
-fdic:column_LONGITUDE a fdic:ColumnMapping ;
-    fdic:columnName "LONGITUDE" ;
+fdic:column_LONGITUDE a csv2rdf:ColumnAnnotation ;
+    csv2rdf:columnName "LONGITUDE" ;
     rdfs:label "Longitude"@en ;
     dcterms:description "Geographic longitude" ;
-    fdic:semanticType "coordinate" ;
-    fdic:dataType "decimal" ;
+    csv2rdf:dataType xsd:decimal ;
     rdfs:seeAlso geo:longitude ;
     owl:equivalentProperty geo:longitude .
 
 # Latitude Column
-fdic:column_LATITUDE a fdic:ColumnMapping ;
-    fdic:columnName "LATITUDE" ;
+fdic:column_LATITUDE a csv2rdf:ColumnAnnotation ;
+    csv2rdf:columnName "LATITUDE" ;
     rdfs:label "Latitude"@en ;
     dcterms:description "Geographic latitude" ;
-    fdic:semanticType "coordinate" ;
-    fdic:dataType "decimal" ;
+    csv2rdf:dataType xsd:decimal ;
     rdfs:seeAlso geo:latitude ;
     owl:equivalentProperty geo:latitude .
 
 # Bank Name Column
-fdic:column_NAME a fdic:ColumnMapping ;
-    fdic:columnName "NAME" ;
+fdic:column_NAME a csv2rdf:ColumnAnnotation ;
+    csv2rdf:columnName "NAME" ;
     rdfs:label "Institution Name"@en ;
     dcterms:description "Legal name of financial institution" ;
-    fdic:semanticType "bank_name" ;
-    fdic:dataType "string" ;
+    csv2rdf:dataType xsd:string ;
     rdfs:seeAlso <https://spec.edmcouncil.org/fibo/ontology/BE/LegalEntities/LegalPersons/hasLegalName> ,
                   fibo-fbc:FinancialInstitution ,
                   schema:BankOrCreditUnion ,
@@ -90,12 +86,11 @@ fdic:column_NAME a fdic:ColumnMapping ;
     dcterms:references dbpedia:Bank .
 
 # Address Column
-fdic:column_ADDRESS a fdic:ColumnMapping ;
-    fdic:columnName "ADDRESS" ;
+fdic:column_ADDRESS a csv2rdf:ColumnAnnotation ;
+    csv2rdf:columnName "ADDRESS" ;
     rdfs:label "Street Address"@en ;
     dcterms:description "Physical street address of the institution" ;
-    fdic:semanticType "address" ;
-    fdic:dataType "string" ;
+    csv2rdf:dataType xsd:string ;
     rdfs:seeAlso fibo-fnd-plc-adr:StreetAddress ,
                   vcard:street-address ,
                   schema:streetAddress ,
@@ -104,42 +99,38 @@ fdic:column_ADDRESS a fdic:ColumnMapping ;
     dcterms:conformsTo <https://www.usps.com/manage/forward-mail.htm> .
 
 # City Column
-fdic:column_CITY a fdic:ColumnMapping ;
-    fdic:columnName "CITY" ;
+fdic:column_CITY a csv2rdf:ColumnAnnotation ;
+    csv2rdf:columnName "CITY" ;
     rdfs:label "City"@en ;
     dcterms:description "City name" ;
-    fdic:semanticType "location" ;
-    fdic:dataType "string" ;
+    csv2rdf:dataType xsd:string ;
     rdfs:seeAlso geonames:name ;
     rdfs:comment "City where the institution is located"@en .
 
 # State Code Column
-fdic:column_STALP a fdic:ColumnMapping ;
-    fdic:columnName "STALP" ;
+fdic:column_STALP a csv2rdf:ColumnAnnotation ;
+    csv2rdf:columnName "STALP" ;
     rdfs:label "State Code"@en ;
     dcterms:description "State abbreviation" ;
-    fdic:semanticType "state_code" ;
-    fdic:dataType "string" ;
+    csv2rdf:dataType xsd:string ;
     rdfs:seeAlso geonames:stateCode ;
     rdfs:comment "Two-letter state abbreviation code"@en .
 
 # State Name Column
-fdic:column_STNAME a fdic:ColumnMapping ;
-    fdic:columnName "STNAME" ;
+fdic:column_STNAME a csv2rdf:ColumnAnnotation ;
+    csv2rdf:columnName "STNAME" ;
     rdfs:label "State Name"@en ;
     dcterms:description "State name" ;
-    fdic:semanticType "state_name" ;
-    fdic:dataType "string" ;
+    csv2rdf:dataType xsd:string ;
     rdfs:seeAlso geonames:name ;
     rdfs:comment "Full name of the state"@en .
 
 # ZIP Code Column
-fdic:column_ZIP a fdic:ColumnMapping ;
-    fdic:columnName "ZIP" ;
+fdic:column_ZIP a csv2rdf:ColumnAnnotation ;
+    csv2rdf:columnName "ZIP" ;
     rdfs:label "ZIP Code"@en ;
     dcterms:description "United States Postal Service ZIP code" ;
-    fdic:semanticType "postal_code" ;
-    fdic:dataType "string" ;
+    csv2rdf:dataType xsd:string ;
     rdfs:seeAlso fibo-fnd-plc-adr:PostCodeIdentifier ,
                   vcard:postal-code ,
                   schema:postalCode ,
@@ -150,12 +141,11 @@ fdic:column_ZIP a fdic:ColumnMapping ;
     dcterms:conformsTo <https://pe.usps.com/cpim/ftp/pubs/Pub28/pub28.pdf> .
 
 # FDIC Certificate Number Column
-fdic:column_CERT a fdic:ColumnMapping ;
-    fdic:columnName "CERT" ;
+fdic:column_CERT a csv2rdf:ColumnAnnotation ;
+    csv2rdf:columnName "CERT" ;
     rdfs:label "FDIC Certificate Number"@en ;
     dcterms:description "Unique FDIC-assigned certificate of insurance number" ;
-    fdic:semanticType "fdic_certificate" ;
-    fdic:dataType "integer" ;
+    csv2rdf:dataType xsd:integer ;
     rdfs:seeAlso fibo-be:GovernmentIssuedLicense ,
                   fibo-fbc:RegulatoryLicense ,
                   schema:identifier ,
@@ -171,22 +161,20 @@ fdic:column_CERT a fdic:ColumnMapping ;
     ] .
 
 # Bank Class Column
-fdic:column_BKCLASS a fdic:ColumnMapping ;
-    fdic:columnName "BKCLASS" ;
+fdic:column_BKCLASS a csv2rdf:ColumnAnnotation ;
+    csv2rdf:columnName "BKCLASS" ;
     rdfs:label "Bank Classification"@en ;
     dcterms:description "Bank classification code" ;
-    fdic:semanticType "bank_class" ;
-    fdic:dataType "string" ;
+    csv2rdf:dataType xsd:string ;
     rdfs:seeAlso <https://spec.edmcouncil.org/fibo/ontology/BE/Corporations/Corporations/OrganizationClassification> ;
     rdfs:comment "Classification code indicating the type of banking institution"@en .
 
 # Service Type Description Column
-fdic:column_SERVTYPE_DESC a fdic:ColumnMapping ;
-    fdic:columnName "SERVTYPE_DESC" ;
+fdic:column_SERVTYPE_DESC a csv2rdf:ColumnAnnotation ;
+    csv2rdf:columnName "SERVTYPE_DESC" ;
     rdfs:label "Service Type Description"@en ;
     dcterms:description "Type of banking service provided" ;
-    fdic:semanticType "service_description" ;
-    fdic:dataType "string" ;
+    csv2rdf:dataType xsd:string ;
     rdfs:seeAlso <https://spec.edmcouncil.org/fibo/ontology/FND/ProductsAndServices/ProductsAndServices/Service> ;
     rdfs:comment "Description of the primary service type offered by the institution"@en .
 
@@ -266,36 +254,30 @@ fdic:FDICBankDataset a dcat:Dataset ;
 
 
 # Column mapping class definition
-fdic:ColumnMapping a owl:Class ;
+csv2rdf:ColumnAnnotation a owl:Class ;
     rdfs:label "Column Mapping"@en ;
     rdfs:comment "A semantic mapping for a CSV column to ontological concepts"@en .
 
 # Properties for column mappings
-fdic:columnName a owl:DatatypeProperty ;
+csv2rdf:columnName a owl:DatatypeProperty ;
     rdfs:label "column name"@en ;
-    rdfs:domain fdic:ColumnMapping ;
+    rdfs:domain csv2rdf:ColumnAnnotation ;
     rdfs:range xsd:string .
 
-fdic:semanticType a owl:DatatypeProperty ;
-    rdfs:label "semantic type"@en ;
-    rdfs:comment "The high-level semantic category of the column"@en ;
-    rdfs:domain fdic:ColumnMapping ;
-    rdfs:range xsd:string .
-
-fdic:dataType a owl:DatatypeProperty ;
+csv2rdf:dataType a owl:DatatypeProperty ;
     rdfs:label "data type"@en ;
     rdfs:comment "The expected data type of values in this column"@en ;
-    rdfs:domain fdic:ColumnMapping ;
+    rdfs:domain csv2rdf:ColumnAnnotation ;
     rdfs:range xsd:string .
 
 
 
 
 # Ontology metadata
-<http://example.org/fdic/column-mappings> a owl:Ontology ;
-    rdfs:label "FDIC Column Mappings"@en ;
-    dcterms:title "FDIC CSV Column Semantic Mappings"@en ;
-    dcterms:description "Semantic mappings for FDIC institution data CSV columns to established ontologies and resources"@en ;
+<http://example.org/csv2rdf/column-mappings> a owl:Ontology ;
+    rdfs:label "CSV Column Mappings"@en ;
+    dcterms:title "CSV Column Semantic Mappings"@en ;
+    dcterms:description "Semantic mappings for CSV columns to established ontologies and resources"@en ;
     dcterms:created "2025-06-19"^^xsd:date ;
     dcterms:creator "Robust/FDIC_OMG" ;
     dcterms:license <https://creativecommons.org/licenses/by/4.0/> ;

@@ -263,29 +263,20 @@ class FDICRDFGenerator:
         # Generate manifest if viewer was requested
         total_pages = current_page if viewer_dir else 0
         if viewer_dir:
-            # Build column RDF data for viewer
-            column_rdf = {}
-            for col_idx, header in enumerate(headers):
-                column_uri = self._make_uri("column", csv_path.stem, str(col_idx))
-                column_rdf[header] = {
-                    "uri": column_uri,
-                    "type": "fdic:Column",
-                    "columnName": header,
-                    "columnIndex": col_idx
-                }
-                if self.annotations and header in self.annotations:
-                    column_rdf[header]["hasAnnotation"] = self.annotations[header]
-            
+            # Generate minimal manifest with just references to metadata and pages
             self._write_viewer_manifest(viewer_dir, {
-                "dataset_uri": table_uri,
-                "rdf_type": ["http://www.w3.org/ns/csvw#Table"],
+                "@context": {
+                    "@vocab": "https://fdic.example.org/ontology#",
+                    "fdic": "https://fdic.example.org/ontology#",
+                    "csvw": "http://www.w3.org/ns/csvw#"
+                },
+                "@type": "csvw:Table",
+                "@id": table_uri,
                 "title": f"FDIC Table: {csv_path.name}",
-                "headers": headers,
+                "metadata": "./table_metadata.ttl",
                 "total_rows": rows_processed,
                 "rows_per_page": rows_per_page,
-                "total_pages": total_pages,
-                "annotations": self.annotations if self.annotations else {},
-                "column_rdf": column_rdf
+                "pages": [f"./page_{i}.json" for i in range(total_pages)]
             })
         
         log.info(f"Completed processing {rows_processed:,} rows")
