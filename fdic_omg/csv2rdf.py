@@ -44,8 +44,8 @@ class CSV2RDF:
                 self.graph.bind(prefix, namespace)
         
         # Define the specific predicate we're looking for
-        # This should match whatever is used in the annotations file
-        column_name_pred = URIRef("http://example.org/fdic/ontology#columnName")
+        # Using csv2rdf namespace for generic column annotations
+        column_name_pred = URIRef("http://example.org/csv2rdf/columnName")
         
         # Find column annotations by looking for triples with the columnName predicate
         for subj, pred, obj in self.annotations_graph.triples((None, column_name_pred, None)):

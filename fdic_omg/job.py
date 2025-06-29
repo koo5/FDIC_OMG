@@ -19,6 +19,7 @@ sys.path.append(os.path.normpath(os.path.join(os.path.dirname(__file__), '../../
 
 from .csv2rdf import CSV2RDF
 from .job_utils import generate_simple_data_table_html
+from .annotation_converter import AnnotationConverter
 
 log = logging.getLogger(__name__)
 
@@ -27,7 +28,9 @@ def process_fdic_omg_job(
     input_files: List[str],
     output_path: str,
     public_url: str,
-    result_tmp_directory_name: str
+    result_tmp_directory_name: str,
+    annotation_file: Optional[str] = None,
+    max_rows: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Process FDIC CSV file as a Robust job
@@ -65,8 +68,32 @@ def process_fdic_omg_job(
     try:
         converter = CSV2RDF(Path(output_path))
         
+        # Load annotations from custom file or default
+        if annotation_file and Path(annotation_file).exists():
+            annotation_path = Path(annotation_file)
+            
+            # Convert YAML to TTL if needed
+            if annotation_path.suffix.lower() in ['.yaml', '.yml']:
+                log.info(f"Converting YAML annotations to TTL: {annotation_file}")
+                # Create temporary TTL file
+                ttl_path = Path(output_path) / "annotations_converted.ttl"
+                converter_tool = AnnotationConverter()
+                converter_tool.yaml_to_ttl(str(annotation_path), str(ttl_path))
+                annotation_path = ttl_path
+            
+            log.info(f"Loading custom annotations from {annotation_path}")
+            converter.load_annotations(annotation_path)
+        else:
+            # Try to load default annotations
+            default_annotations = Path(__file__).parent / "annotations" / "fdic_banks.ttl"
+            if default_annotations.exists():
+                log.info(f"Loading default annotations from {default_annotations}")
+                converter.load_annotations(default_annotations)
+            else:
+                log.warning("No annotations file found, proceeding without column mappings")
+        
         # Process CSV to generate RDF with cells
-        table_uri = converter.process_csv(Path(csv_file), max_rows=100)  # Limit for demo
+        table_uri = converter.process_csv(Path(csv_file), max_rows=max_rows)  # Use provided max_rows or None
         
         # Get processing results
         manifest_path = converter.output_dir / "table_manifest.json"
@@ -303,12 +330,24 @@ def _generate_html_report(results: Dict, output_files: Dict, result_uri: str) ->
 # Entry point for Robust worker
 def main(input_files, output_path, params):
     """Main entry point called by Robust worker"""
-    public_url = params.get('public_url', 'http://localhost')
-    result_tmp_directory_name = params.get('result_tmp_directory_name', 'unknown')
+    # Extract parameters from msg->params
+    msg = params.get('msg', {})
+    msg_params = msg.get('params', {})
+    
+    # Get all parameters from msg_params
+    public_url = msg_params.get('public_url', 'http://localhost')
+    result_tmp_directory_name = msg_params.get('result_tmp_directory_name', 'unknown')
+    max_rows = msg_params.get('max_rows')  # None means process all rows
+    annotation_file = msg_params.get('annotation_file')
+    
+    log.info(f"Processing with public_url={public_url}, result_tmp_directory_name={result_tmp_directory_name}")
+    log.info(f"Processing with max_rows={max_rows}, annotation_file={annotation_file}")
     
     return process_fdic_omg_job(
         input_files=input_files,
         output_path=output_path,
         public_url=public_url,
-        result_tmp_directory_name=result_tmp_directory_name
+        result_tmp_directory_name=result_tmp_directory_name,
+        annotation_file=annotation_file,
+        max_rows=max_rows
     )

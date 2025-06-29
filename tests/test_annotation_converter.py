@@ -32,7 +32,6 @@ class TestAnnotationConverter:
                 'CERT': {
                     'label': 'Certificate Number',
                     'description': 'Unique identifier for the institution',
-                    'semantic_type': 'identifier',
                     'data_type': 'integer',
                     'mappings': [
                         {
@@ -53,7 +52,6 @@ class TestAnnotationConverter:
                 'NAME': {
                     'label': 'Institution Name',
                     'description': 'Legal name of the bank',
-                    'semantic_type': 'name',
                     'data_type': 'string',
                     'mappings': [
                         {
@@ -65,7 +63,6 @@ class TestAnnotationConverter:
                 'LATITUDE': {
                     'label': 'Latitude',
                     'description': 'Geographic latitude coordinate',
-                    'semantic_type': 'coordinate',
                     'data_type': 'decimal',
                     'mappings': [
                         {
@@ -84,11 +81,6 @@ class TestAnnotationConverter:
                 'publisher': 'Test Publisher',
                 'source': 'https://example.org/data',
                 'license': 'https://creativecommons.org/licenses/by/4.0/'
-            },
-            'file_metadata': {
-                'created': '2025-06-29',
-                'modified': '2025-06-29',
-                'version': '1.0.0'
             }
         }
     
@@ -135,7 +127,6 @@ class TestAnnotationConverter:
             assert (cert_uri, RDF.type, column_class) in g
             assert (cert_uri, csv2rdf.columnName, Literal("CERT")) in g
             assert (cert_uri, RDFS.label, Literal("Certificate Number")) in g
-            assert (cert_uri, csv2rdf.semanticType, Literal("identifier")) in g
             assert (cert_uri, csv2rdf.dataType, XSD.integer) in g
             
             # Check mappings
@@ -182,7 +173,6 @@ class TestAnnotationConverter:
                 
                 assert rt_col.get('label') == orig_col.get('label')
                 assert rt_col.get('description') == orig_col.get('description')
-                assert rt_col.get('semantic_type') == orig_col.get('semantic_type')
                 assert rt_col.get('data_type') == orig_col.get('data_type')
                 
         finally:

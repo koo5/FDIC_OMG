@@ -101,10 +101,22 @@ class AnnotationConverter:
         
         # Process column definitions
         columns = data.get('columns', {})
+        used_uris = set()
+        
         for column_id, column_data in columns.items():
             # Create safe URI for column
             safe_id = re.sub(r'[^a-zA-Z0-9_-]', '_', str(column_id))
-            column_uri = self.base_ns[f"column_{safe_id}"]
+            base_uri = f"column_{safe_id}"
+            
+            # Ensure uniqueness by appending a number if needed
+            column_uri_str = base_uri
+            counter = 1
+            while column_uri_str in used_uris:
+                column_uri_str = f"{base_uri}_{counter}"
+                counter += 1
+            
+            used_uris.add(column_uri_str)
+            column_uri = self.base_ns[column_uri_str]
             
             # Basic properties
             g.add((column_uri, RDF.type, column_annotation_class))
