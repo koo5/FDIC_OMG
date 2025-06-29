@@ -136,7 +136,7 @@ class FDICRDFGenerator:
                         if self.annotations and header in self.annotations:
                             metadata_file.write(f"<{column_uri}> fdic:hasAnnotation {self.annotations[header]} .\n")
                         
-                        metadata_file.write(f"<{table_uri}> fdic:hasColumn <{column_uri}> .\n\n")
+                        metadata_file.write(f"<{table_uri}> fdic:column <{column_uri}> .\n\n")
                     
                     # Copy the full annotation definitions from the annotations file
                     annotations_file = Path(__file__).parent / "annotations" / "column_annotations.ttl"
@@ -165,7 +165,7 @@ class FDICRDFGenerator:
                 output.write(f'    fdic:columnIndex {col_idx} .\n')
                 triples_count += 3
                 
-                output.write(f"<{table_uri}> fdic:hasColumn <{column_uri}> .\n\n")
+                output.write(f"<{table_uri}> fdic:column <{column_uri}> .\n\n")
                 triples_count += 1
             
             # Process rows
@@ -176,7 +176,7 @@ class FDICRDFGenerator:
                 # Write row
                 output.write(f"<{row_uri}> a fdic:Row ;\n")
                 output.write(f"    fdic:rowIndex {row_idx} .\n")
-                output.write(f"<{table_uri}> fdic:hasRow <{row_uri}> .\n")
+                output.write(f"<{table_uri}> fdic:row <{row_uri}> .\n")
                 triples_count += 3
                 
                 # Collect viewer data if requested

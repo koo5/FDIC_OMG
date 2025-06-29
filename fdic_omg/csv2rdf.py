@@ -73,7 +73,7 @@ class CSV2RDF:
             self.graph.add((column_uri, RDF.type, URIRef("https://example.org/ontology#Column")))
             self.graph.add((column_uri, URIRef("https://example.org/ontology#columnName"), Literal(header)))
             self.graph.add((column_uri, URIRef("https://example.org/ontology#columnIndex"), Literal(idx, datatype=XSD.integer)))
-            self.graph.add((table_uri, URIRef("https://example.org/ontology#hasColumn"), column_uri))
+            self.graph.add((table_uri, URIRef("https://example.org/ontology#column"), column_uri))
             
             # Link to annotation if exists
             if header in self.column_annotations:
@@ -175,13 +175,13 @@ class CSV2RDF:
                         self.write_row_triple(chunk_file, cell_uri, RDF.type, URIRef("https://example.org/ontology#Cell"))
                         
                         # Link cell to row and column
-                        self.write_row_triple(full_file, cell_uri, URIRef("https://example.org/ontology#hasRow"), row_uri)
-                        self.write_row_triple(chunk_file, cell_uri, URIRef("https://example.org/ontology#hasRow"), row_uri)
-                        self.write_row_triple(full_file, cell_uri, URIRef("https://example.org/ontology#hasColumn"), column_uri)
-                        self.write_row_triple(chunk_file, cell_uri, URIRef("https://example.org/ontology#hasColumn"), column_uri)
+                        self.write_row_triple(full_file, cell_uri, URIRef("https://example.org/ontology#row"), row_uri)
+                        self.write_row_triple(chunk_file, cell_uri, URIRef("https://example.org/ontology#row"), row_uri)
+                        self.write_row_triple(full_file, cell_uri, URIRef("https://example.org/ontology#column"), column_uri)
+                        self.write_row_triple(chunk_file, cell_uri, URIRef("https://example.org/ontology#column"), column_uri)
                         
                         # Write cell value
-                        value_prop = URIRef("https://example.org/ontology#hasValue")
+                        value_prop = URIRef("https://example.org/ontology#value")
                         try:
                             # Try integer
                             int_val = int(value)
@@ -199,8 +199,8 @@ class CSV2RDF:
                                 self.write_row_triple(chunk_file, cell_uri, value_prop, value)
                         
                         # Also link row to cell (for easy navigation)
-                        self.write_row_triple(full_file, row_uri, URIRef("https://example.org/ontology#hasCell"), cell_uri)
-                        self.write_row_triple(chunk_file, row_uri, URIRef("https://example.org/ontology#hasCell"), cell_uri)
+                        self.write_row_triple(full_file, row_uri, URIRef("https://example.org/ontology#cell"), cell_uri)
+                        self.write_row_triple(chunk_file, row_uri, URIRef("https://example.org/ontology#cell"), cell_uri)
                 
                 row_count += 1
                 rows_in_chunk += 1

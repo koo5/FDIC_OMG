@@ -157,7 +157,7 @@ fdic:column_CERT a csv2rdf:ColumnAnnotation ;
     owl:equivalentClass [
         a owl:Restriction ;
         owl:onProperty dcterms:identifier ;
-        owl:hasValue "FDIC Certificate Number"^^xsd:string
+        owl:value "FDIC Certificate Number"^^xsd:string
     ] .
 
 # Bank Class Column
