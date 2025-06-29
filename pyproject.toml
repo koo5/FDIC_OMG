@@ -7,13 +7,14 @@ name = "fdic-omg"
 version = "1.0.0"
 description = "FDIC OMG Semantic Augmentation Challenge processor"
 authors = [
-    {name = "Lodgeit Labs", email = "dev@lodgeit.net.au"}
+    {name = "koo5", email = "kolman.jindrich@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
     "rdflib>=7.0.0",
     "click>=8.1.0",
+    "PyYAML>=6.0.0",
 ]
 
 [project.optional-dependencies]

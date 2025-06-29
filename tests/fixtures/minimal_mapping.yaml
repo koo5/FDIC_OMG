@@ -1,0 +1,52 @@
+# Minimal FDIC Column Mapping for testing
+dataset:
+  title: Test FDIC Dataset
+  description: Minimal test dataset
+  publisher:
+    name: Test Publisher
+    homepage: https://test.org
+  keywords:
+    - test
+    - fdic
+  spatial: Test Location
+  temporal: Test Period
+  version: "2025.1"
+
+resources:
+  TestOntology:
+    name: Test Ontology
+    description: A test ontology for unit tests
+    homepage: https://test-ontology.org
+    type: Well-formed Ontology
+
+columns:
+  TEST_ID:
+    label: Test Identifier
+    description: A test identifier column
+    semantic_type: identifier
+    data_type: integer
+    mappings:
+      - ontology: TestOntology
+        property: https://test-ontology.org/identifier
+        relation: equivalent
+    comments: This is a test identifier
+
+  TEST_NAME:
+    label: Test Name
+    description: A test name column
+    semantic_type: bank_name
+    data_type: string
+    mappings:
+      - ontology: FOAF
+        property: http://xmlns.com/foaf/0.1/name
+        relation: equivalent
+    references:
+      - url: https://example.org/test-name
+        type: definition
+
+metadata:
+  format_version: "1.0"
+  created: "2025-06-20"
+  creator: Test System
+  license: https://creativecommons.org/licenses/by/4.0/
+  description: Minimal test mapping file

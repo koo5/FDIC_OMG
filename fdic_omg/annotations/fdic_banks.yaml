@@ -1,0 +1,341 @@
+prefixes:
+  brick: https://brickschema.org/schema/Brick#
+  csvw: http://www.w3.org/ns/csvw#
+  dc: http://purl.org/dc/elements/1.1/
+  dcat: http://www.w3.org/ns/dcat#
+  dcmitype: http://purl.org/dc/dcmitype/
+  dcterms: http://purl.org/dc/terms/
+  dcam: http://purl.org/dc/dcam/
+  doap: http://usefulinc.com/ns/doap#
+  foaf: http://xmlns.com/foaf/0.1/
+  geo: http://www.opengis.net/ont/geosparql#
+  odrl: http://www.w3.org/ns/odrl/2/
+  org: http://www.w3.org/ns/org#
+  prof: http://www.w3.org/ns/dx/prof/
+  prov: http://www.w3.org/ns/prov#
+  qb: http://purl.org/linked-data/cube#
+  schema: https://schema.org/
+  sh: http://www.w3.org/ns/shacl#
+  skos: http://www.w3.org/2004/02/skos/core#
+  sosa: http://www.w3.org/ns/sosa/
+  ssn: http://www.w3.org/ns/ssn/
+  time: http://www.w3.org/2006/time#
+  vann: http://purl.org/vocab/vann/
+  void: http://rdfs.org/ns/void#
+  wgs: https://www.w3.org/2003/01/geo/wgs84_pos#
+  owl: http://www.w3.org/2002/07/owl#
+  rdf: http://www.w3.org/1999/02/22-rdf-syntax-ns#
+  rdfs: http://www.w3.org/2000/01/rdf-schema#
+  xsd: http://www.w3.org/2001/XMLSchema#
+  xml: http://www.w3.org/XML/1998/namespace
+  fdic: http://example.org/fdic/
+  fibo: https://spec.edmcouncil.org/fibo/ontology/
+  fibo-fbc: https://spec.edmcouncil.org/fibo/ontology/FBC/
+  fibo-be: https://spec.edmcouncil.org/fibo/ontology/BE/
+  fibo-fnd-plc-adr: https://spec.edmcouncil.org/fibo/ontology/FND/Places/Addresses/
+  fibo-fnd-rel-rel: https://spec.edmcouncil.org/fibo/ontology/FND/Relations/Relations/
+  geonames: http://www.geonames.org/ontology#
+  wgs84: http://www.w3.org/2003/01/geo/wgs84_pos#
+  vcard: http://www.w3.org/2006/vcard/ns#
+  wikidata: http://www.wikidata.org/entity/
+  dbpedia: http://dbpedia.org/resource/
+columns:
+  X:
+    label: X Coordinate
+    description: Longitude coordinate in decimal degrees
+    data_type: decimal
+    mappings:
+    - property: geo:hasGeometry
+      relation: similar
+    - property: wgs84:long
+      relation: similar
+    - property: schema:longitude
+      relation: similar
+    - property: https://en.wikipedia.org/wiki/Longitude
+      relation: similar
+    - property: http://example.org/csv2rdf/ColumnAnnotation
+      relation: instance_of
+    - property: geo:hasGeometry
+      relation: related
+    - property: wgs84:long
+      relation: related
+    - property: schema:longitude
+      relation: related
+    - property: https://en.wikipedia.org/wiki/Longitude
+      relation: related
+    references:
+    - http://www.opengis.net/ont/geosparql#hasGeometry
+    - http://www.w3.org/2003/01/geo/wgs84_pos#long
+    - https://schema.org/longitude
+    - https://en.wikipedia.org/wiki/Longitude
+    comments: Maps to longitude in geographic coordinate system. X coordinate represents the east-west position
+  Y:
+    label: Y Coordinate
+    description: Latitude coordinate in decimal degrees
+    data_type: decimal
+    mappings:
+    - property: geo:hasGeometry
+      relation: similar
+    - property: wgs84:lat
+      relation: similar
+    - property: schema:latitude
+      relation: similar
+    - property: https://en.wikipedia.org/wiki/Latitude
+      relation: similar
+    - property: http://example.org/csv2rdf/ColumnAnnotation
+      relation: instance_of
+    - property: geo:hasGeometry
+      relation: related
+    - property: wgs84:lat
+      relation: related
+    - property: schema:latitude
+      relation: related
+    - property: https://en.wikipedia.org/wiki/Latitude
+      relation: related
+    references:
+    - http://www.opengis.net/ont/geosparql#hasGeometry
+    - http://www.w3.org/2003/01/geo/wgs84_pos#lat
+    - https://schema.org/latitude
+    - https://en.wikipedia.org/wiki/Latitude
+    comments: Maps to latitude in geographic coordinate system. Y coordinate represents the north-south position
+  LONGITUDE:
+    label: Longitude
+    description: Geographic longitude
+    data_type: decimal
+    mappings:
+    - property: geo:longitude
+      relation: equivalent
+    - property: geo:longitude
+      relation: exact
+    - property: geo:longitude
+      relation: similar
+    - property: http://example.org/csv2rdf/ColumnAnnotation
+      relation: instance_of
+    - property: geo:longitude
+      relation: related
+    references:
+    - http://www.opengis.net/ont/geosparql#longitude
+  LATITUDE:
+    label: Latitude
+    description: Geographic latitude
+    data_type: decimal
+    mappings:
+    - property: geo:latitude
+      relation: equivalent
+    - property: geo:latitude
+      relation: exact
+    - property: geo:latitude
+      relation: similar
+    - property: http://example.org/csv2rdf/ColumnAnnotation
+      relation: instance_of
+    - property: geo:latitude
+      relation: related
+    references:
+    - http://www.opengis.net/ont/geosparql#latitude
+  NAME:
+    label: Institution Name
+    description: Legal name of financial institution
+    data_type: string
+    mappings:
+    - property: fibo:BE/LegalEntities/LegalPersons/hasLegalName
+      relation: similar
+    - property: fibo:FBC/FinancialInstitution
+      relation: similar
+    - property: schema:BankOrCreditUnion
+      relation: similar
+    - property: foaf:name
+      relation: similar
+    - property: https://www.investopedia.com/terms/f/financialinstitution.asp
+      relation: similar
+    - property: https://en.wikipedia.org/wiki/Bank
+      relation: similar
+    - property: http://example.org/csv2rdf/ColumnAnnotation
+      relation: instance_of
+    - property: fibo:BE/LegalEntities/LegalPersons/hasLegalName
+      relation: related
+    - property: fibo:FBC/FinancialInstitution
+      relation: related
+    - property: schema:BankOrCreditUnion
+      relation: related
+    - property: foaf:name
+      relation: related
+    - property: https://www.investopedia.com/terms/f/financialinstitution.asp
+      relation: related
+    - property: https://en.wikipedia.org/wiki/Bank
+      relation: related
+    references:
+    - https://spec.edmcouncil.org/fibo/ontology/BE/LegalEntities/LegalPersons/hasLegalName
+    - https://spec.edmcouncil.org/fibo/ontology/FBC/FinancialInstitution
+    - https://schema.org/BankOrCreditUnion
+    - http://xmlns.com/foaf/0.1/name
+    - https://www.investopedia.com/terms/f/financialinstitution.asp
+    - https://en.wikipedia.org/wiki/Bank
+    comments: The official legal name of the FDIC-insured institution as registered with regulatory authorities
+  ADDRESS:
+    label: Street Address
+    description: Physical street address of the institution
+    data_type: string
+    mappings:
+    - property: fibo:FND/Places/Addresses/StreetAddress
+      relation: similar
+    - property: vcard:street-address
+      relation: similar
+    - property: schema:streetAddress
+      relation: similar
+    - property: https://pe.usps.com/text/pub28/welcome.htm
+      relation: similar
+    - property: http://example.org/csv2rdf/ColumnAnnotation
+      relation: instance_of
+    - property: fibo:FND/Places/Addresses/StreetAddress
+      relation: related
+    - property: vcard:street-address
+      relation: related
+    - property: schema:streetAddress
+      relation: related
+    - property: https://pe.usps.com/text/pub28/welcome.htm
+      relation: related
+    references:
+    - https://spec.edmcouncil.org/fibo/ontology/FND/Places/Addresses/StreetAddress
+    - http://www.w3.org/2006/vcard/ns#street-address
+    - https://schema.org/streetAddress
+    - https://pe.usps.com/text/pub28/welcome.htm
+    comments: Street address of the institution's physical location, formatted according to USPS standards
+  CITY:
+    label: City
+    description: City name
+    data_type: string
+    mappings:
+    - property: geonames:name
+      relation: similar
+    - property: http://example.org/csv2rdf/ColumnAnnotation
+      relation: instance_of
+    - property: geonames:name
+      relation: related
+    references:
+    - http://www.geonames.org/ontology#name
+    comments: City where the institution is located
+  STALP:
+    label: State Code
+    description: State abbreviation
+    data_type: string
+    mappings:
+    - property: geonames:stateCode
+      relation: similar
+    - property: http://example.org/csv2rdf/ColumnAnnotation
+      relation: instance_of
+    - property: geonames:stateCode
+      relation: related
+    references:
+    - http://www.geonames.org/ontology#stateCode
+    comments: Two-letter state abbreviation code
+  STNAME:
+    label: State Name
+    description: State name
+    data_type: string
+    mappings:
+    - property: geonames:name
+      relation: similar
+    - property: http://example.org/csv2rdf/ColumnAnnotation
+      relation: instance_of
+    - property: geonames:name
+      relation: related
+    references:
+    - http://www.geonames.org/ontology#name
+    comments: Full name of the state
+  ZIP:
+    label: ZIP Code
+    description: United States Postal Service ZIP code
+    data_type: string
+    mappings:
+    - property: fibo:FND/Places/Addresses/PostCodeIdentifier
+      relation: similar
+    - property: vcard:postal-code
+      relation: similar
+    - property: schema:postalCode
+      relation: similar
+    - property: https://tools.usps.com/go/ZipLookupAction
+      relation: similar
+    - property: https://en.wikipedia.org/wiki/ZIP_Code
+      relation: similar
+    - property: http://example.org/csv2rdf/ColumnAnnotation
+      relation: instance_of
+    - property: fibo:FND/Places/Addresses/PostCodeIdentifier
+      relation: related
+    - property: vcard:postal-code
+      relation: related
+    - property: schema:postalCode
+      relation: related
+    - property: https://tools.usps.com/go/ZipLookupAction
+      relation: related
+    - property: https://en.wikipedia.org/wiki/ZIP_Code
+      relation: related
+    references:
+    - https://spec.edmcouncil.org/fibo/ontology/FND/Places/Addresses/PostCodeIdentifier
+    - http://www.w3.org/2006/vcard/ns#postal-code
+    - https://schema.org/postalCode
+    - https://tools.usps.com/go/ZipLookupAction
+    - https://en.wikipedia.org/wiki/ZIP_Code
+    comments: 5-digit Zone Improvement Plan (ZIP) postal code used by USPS for mail delivery
+  CERT:
+    label: FDIC Certificate Number
+    description: Unique FDIC-assigned certificate of insurance number
+    data_type: integer
+    mappings:
+    - property: fibo:BE/GovernmentIssuedLicense
+      relation: similar
+    - property: fibo:FBC/RegulatoryLicense
+      relation: similar
+    - property: schema:identifier
+      relation: similar
+    - property: https://www.fdic.gov/resources/bankers/call-reports/crinst-031/2019/2019-03-crinst-031-rc-a.pdf
+      relation: similar
+    - property: https://en.wikipedia.org/wiki/Federal_Deposit_Insurance_Corporation#Certificate_numbers
+      relation: similar
+    - property: http://example.org/csv2rdf/ColumnAnnotation
+      relation: instance_of
+    - property: fibo:BE/GovernmentIssuedLicense
+      relation: related
+    - property: fibo:FBC/RegulatoryLicense
+      relation: related
+    - property: schema:identifier
+      relation: related
+    - property: https://www.fdic.gov/resources/bankers/call-reports/crinst-031/2019/2019-03-crinst-031-rc-a.pdf
+      relation: related
+    - property: https://en.wikipedia.org/wiki/Federal_Deposit_Insurance_Corporation#Certificate_numbers
+      relation: related
+    references:
+    - https://spec.edmcouncil.org/fibo/ontology/BE/GovernmentIssuedLicense
+    - https://spec.edmcouncil.org/fibo/ontology/FBC/RegulatoryLicense
+    - https://schema.org/identifier
+    - https://www.fdic.gov/resources/bankers/call-reports/crinst-031/2019/2019-03-crinst-031-rc-a.pdf
+    - https://en.wikipedia.org/wiki/Federal_Deposit_Insurance_Corporation#Certificate_numbers
+    comments: Unique identifier assigned by the FDIC when granting deposit insurance. This number remains constant throughout
+      the institution's existence
+  BKCLASS:
+    label: Bank Classification
+    description: Bank classification code
+    data_type: string
+    mappings:
+    - property: fibo:BE/Corporations/Corporations/OrganizationClassification
+      relation: similar
+    - property: http://example.org/csv2rdf/ColumnAnnotation
+      relation: instance_of
+    - property: fibo:BE/Corporations/Corporations/OrganizationClassification
+      relation: related
+    references:
+    - https://spec.edmcouncil.org/fibo/ontology/BE/Corporations/Corporations/OrganizationClassification
+    comments: Classification code indicating the type of banking institution
+  SERVTYPE_DESC:
+    label: Service Type Description
+    description: Type of banking service provided
+    data_type: string
+    mappings:
+    - property: fibo:FND/ProductsAndServices/ProductsAndServices/Service
+      relation: similar
+    - property: http://example.org/csv2rdf/ColumnAnnotation
+      relation: instance_of
+    - property: fibo:FND/ProductsAndServices/ProductsAndServices/Service
+      relation: related
+    references:
+    - https://spec.edmcouncil.org/fibo/ontology/FND/ProductsAndServices/ProductsAndServices/Service
+    comments: Description of the primary service type offered by the institution

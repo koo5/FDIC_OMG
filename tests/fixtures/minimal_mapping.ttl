@@ -1,0 +1,57 @@
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix csv2rdf: <http://example.org/csv2rdf/> .
+@prefix test: <http://example.org/test/> .
+
+# Test ontology
+<http://example.org/csv2rdf/test-column-mappings> a owl:Ontology ;
+    rdfs:label "Test Column Mappings"@en ;
+    dcterms:title "Test CSV Column Semantic Mappings"@en .
+
+# Test dataset
+test:TestDataset a dcat:Dataset ;
+    dcterms:title "Test Dataset" ;
+    dcterms:description "Minimal test dataset" ;
+    dcterms:publisher [
+        a foaf:Organization ;
+        foaf:name "Test Publisher" ;
+        foaf:homepage <https://test.org>
+    ] ;
+    dcat:keyword "test", "csv" .
+
+# Column mapping class definition
+csv2rdf:ColumnAnnotation a owl:Class ;
+    rdfs:label "Column Annotation"@en ;
+    rdfs:comment "A semantic annotation for a CSV column"@en .
+
+# Properties for column mappings
+csv2rdf:columnName a owl:DatatypeProperty ;
+    rdfs:label "column name"@en ;
+    rdfs:domain csv2rdf:ColumnAnnotation ;
+    rdfs:range xsd:string .
+
+csv2rdf:dataType a owl:DatatypeProperty ;
+    rdfs:label "data type"@en ;
+    rdfs:domain csv2rdf:ColumnAnnotation ;
+    rdfs:range xsd:string .
+
+# Test columns
+test:column_TEST_ID a csv2rdf:ColumnAnnotation ;
+    csv2rdf:columnName "TEST_ID" ;
+    rdfs:label "Test Identifier"@en ;
+    dcterms:description "A test identifier column" ;
+    csv2rdf:dataType xsd:integer ;
+    rdfs:seeAlso <https://test-ontology.org/identifier> ;
+    rdfs:comment "This is a test identifier"@en .
+
+test:column_TEST_NAME a csv2rdf:ColumnAnnotation ;
+    csv2rdf:columnName "TEST_NAME" ;
+    rdfs:label "Test Name"@en ;
+    dcterms:description "A test name column" ;
+    csv2rdf:dataType xsd:string ;
+    rdfs:seeAlso foaf:name .
